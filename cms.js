@@ -62,7 +62,7 @@ app.post('/get_article_list', (req, res) => {
     if(req.body.category) query.category = req.body.category;
     if(!req.session.username) query.published = true;
 
-    dbo.collection("articles").find(query).toArray( (err, result) => {
+    dbo.collection("articles").find(query,{projection: {content: 0}}).toArray( (err, result) => {
       if (err) console.log(err);
       db.close();
       res.send(result)
@@ -75,8 +75,20 @@ app.post('/get_article_categories', (req, res) => {
     if (err) throw err
     var dbo = db.db(DB_config.DB_name)
 
-    // By default query everything but if not logged in only query published
     dbo.collection("articles").find({}, {projection: { _id:0, category: 1}}).toArray( (err, result) => {
+      if (err) console.log(err);
+      db.close();
+      res.send(result)
+    });
+  });
+})
+
+app.post('/get_tags', (req, res) => {
+  MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
+    if (err) throw err
+    db.db(DB_config.DB_name)
+    .collection("articles")
+    .distinct("tags", {}, (err, result) => {
       if (err) console.log(err);
       db.close();
       res.send(result)

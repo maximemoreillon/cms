@@ -53,16 +53,21 @@ app.use(cookieSession({
 }));
 
 app.post('/get_article_list', (req, res) => {
+  console.log("[Express] Article list requested")
   MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
     if (err) throw err
-    var dbo = db.db(DB_config.DB_name)
 
     // By default query everything but if not logged in only query published
     var query = {}
     if(req.body.category) query.category = req.body.category;
     if(!req.session.username) query.published = true;
 
-    dbo.collection("articles").find(query,{projection: {content: 0}}).toArray( (err, result) => {
+    // Do not get content to prevent a massive response
+    db.db(DB_config.DB_name)
+    .collection("articles")
+    .find(query, {projection: {content: 0}})
+    .sort({edit_date: -1})
+    .toArray( (err, result) => {
       if (err) console.log(err);
       db.close();
       res.send(result)

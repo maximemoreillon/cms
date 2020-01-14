@@ -66,7 +66,7 @@ app.post('/get_article_list', (req, res) => {
     db.db(DB_config.DB_name)
     .collection("articles")
     .find(query, {projection: {content: 0}})
-    .sort({edit_date: -1})
+    .sort({edit_date: -1, creation_date: -1})
     .toArray( (err, result) => {
       if (err) console.log(err);
       db.close();

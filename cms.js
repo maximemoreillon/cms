@@ -7,7 +7,7 @@ const bodyParser = require('body-parser')
 const MongoDB = require('mongodb');
 const history = require('connect-history-api-fallback');
 const jwt = require('jsonwebtoken')
-
+const Cookies = require('cookies')
 const authorization_middleware = require('@moreillon/authorization_middleware');
 
 
@@ -58,6 +58,7 @@ function check_authentication(req){
 
 app.post('/get_article_list', (req, res) => {
   console.log("[Express] Article list requested")
+
 
   MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
     if (err) throw err

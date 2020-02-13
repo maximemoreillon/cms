@@ -6,13 +6,19 @@ const cookieSession = require('cookie-session')
 const bodyParser = require('body-parser')
 const MongoDB = require('mongodb');
 const history = require('connect-history-api-fallback');
+const jwt = require('jsonwebtoken')
+
+const authorization_middleware = require('@moreillon/authorization_middleware');
+
 
 // Local modules
 const credentials = require('../common/credentials');
-const misc = require('../common/misc');
 
 // Parameters
 const port = 8050
+const uploads_directory_path = path.join(__dirname, 'uploaded_images')
+
+authorization_middleware.secret = credentials.jwt.secret
 
 // MongoDB related
 const MongoClient = MongoDB.MongoClient;
@@ -24,43 +30,45 @@ const DB_config = {
   options: { useUnifiedTopology: true },
 }
 
-// authentication middleware
-function check_authentication(req, res, next) {
-  if(!req.session.username) res.status(400).send("Unauthorized");
-  else next();
-}
 
 // Express related
 const app = express()
-app.use(history({
-  // Ignore route /file
-  rewrites: [
-    { from: '/file', to: '/file'}
-  ]
-}));
 app.use(bodyParser.json({limit: '50mb', extended: true}))
-app.use(express.static(path.join(__dirname, 'dist')));
-app.use(cors({
-  origin: misc.cors_origins,
-  credentials: true,
-}));
-app.use(cookieSession({
-  name: 'session',
-  secret: credentials.session.secret,
-  maxAge: 253402300000000,
-  sameSite: false,
-  domain: '.maximemoreillon.com'
-}));
+app.use(express.static(path.join(__dirname, 'dist')))
+//app.use(express.static(uploads_directory_path)); // serve images
+app.use(cors())
+app.use(history())
+
+function check_authentication(req){
+  // Authorization using a JWT
+
+  if(!req.headers.authorization) return false
+
+  // parse the headers to get the token
+  let token = req.headers.authorization.split(" ")[1];
+
+  var decoded = jwt.verify(token, credentials.jwt.secret);
+
+  if(decoded) return true
+  else return false
+
+
+}
+
 
 app.post('/get_article_list', (req, res) => {
   console.log("[Express] Article list requested")
+
   MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
     if (err) throw err
 
     // By default query everything but if not logged in only query published
     var query = {}
     if(req.body.category) query.category = req.body.category;
-    if(!req.session.username) query.published = true;
+    if(req.body.tags) console.log("NOT IMPLEMENTED YET")
+
+    // this is flimsy
+    if(!check_authentication(req)) query.published = true;
 
     // Do not get content to prevent a massive response
     db.db(DB_config.DB_name)
@@ -73,6 +81,7 @@ app.post('/get_article_list', (req, res) => {
       res.send(result)
     });
   });
+
 })
 
 app.post('/get_article_categories', (req, res) => {
@@ -110,7 +119,7 @@ app.post('/get_article', (req, res) => {
 
     // Query by ID but if not logged in, only query public articles
     var query = { _id: ObjectID(req.body._id) }
-    if(!req.session.username) query.published = true;
+    if(!check_authentication(req)) query.published = true;
 
     dbo.collection("articles").findOne(query, (err, result) => {
       if (err) console.log(err);
@@ -120,7 +129,7 @@ app.post('/get_article', (req, res) => {
   });
 })
 
-app.post('/edit_article',check_authentication, (req, res) => {
+app.post('/edit_article',authorization_middleware.middleware, (req, res) => {
   MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
     if (err) throw err
     var dbo = db.db(DB_config.DB_name)
@@ -143,7 +152,7 @@ app.post('/edit_article',check_authentication, (req, res) => {
   });
 })
 
-app.post('/delete_article',check_authentication, (req, res) => {
+app.post('/delete_article',authorization_middleware.middleware, (req, res) => {
   MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
     if (err) throw err
     var dbo = db.db(DB_config.DB_name)
@@ -156,5 +165,27 @@ app.post('/delete_article',check_authentication, (req, res) => {
     });
   });
 })
+
+/*
+app.post('/image_upload', check_authentication, (req, res) => {
+
+  var form = new formidable.IncomingForm();
+  form.parse(req, (err, fields, files) => {
+    if (err) throw err;
+
+    if('image' in files){
+      var oldpath = files.image.path;
+      var new_file_name = uuidv1() + path.extname(files.image.name)
+      var newpath = uploads_directory_path + new_file_name;
+      fs.rename(oldpath, newpath, (err) => {
+        if (err) throw err;
+        res.send(new_file_name)
+      });
+    }
+    else   res.status(503)
+
+  });
+});
+*/
 
 app.listen(port, () => console.log(`CMS listening on port ${port}`))

@@ -60,7 +60,7 @@ app.post('/get_article_list', (req, res) => {
 
 
   MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
-    if (err) throw err
+    if (err) return res.status(500).send("Error connecting to DB")
 
     // By default query everything but if not logged in only query published
     var query = {}
@@ -76,7 +76,7 @@ app.post('/get_article_list', (req, res) => {
     .find(query, {projection: {content: 0}})
     .sort({edit_date: -1, creation_date: -1})
     .toArray( (err, result) => {
-      if (err) console.log(err);
+      if (err) return res.status(500).send("Error querying the DB for article list")
       db.close();
       res.send(result)
     });
@@ -86,11 +86,11 @@ app.post('/get_article_list', (req, res) => {
 
 app.post('/get_article_categories', (req, res) => {
   MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
-    if (err) throw err
+    if (err) return res.status(500).send("Error connecting to DB")
     var dbo = db.db(DB_config.DB_name)
 
     dbo.collection("articles").find({}, {projection: { _id:0, category: 1}}).toArray( (err, result) => {
-      if (err) console.log(err);
+      if (err) return res.status(500).send("Error querying the DB for categories")
       db.close();
       res.send(result)
     });
@@ -99,11 +99,11 @@ app.post('/get_article_categories', (req, res) => {
 
 app.post('/get_tags', (req, res) => {
   MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
-    if (err) throw err
+    if (err) return res.status(500).send("Error connecting to DB")
     db.db(DB_config.DB_name)
     .collection("articles")
     .distinct("tags", {}, (err, result) => {
-      if (err) console.log(err);
+      if (err) return res.status(500).send("Error querying the DB for tags")
       db.close();
       res.send(result)
     });
@@ -114,15 +114,16 @@ app.post('/get_article', (req, res) => {
   // route to get load a single article for either viewing or editing
 
   MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
-    if (err) throw err
+    if (err) return res.status(500).send("Error connecting to DB")
     var dbo = db.db(DB_config.DB_name)
 
     // Query by ID but if not logged in, only query public articles
     var query = { _id: ObjectID(req.body._id) }
     if(!check_authentication(req)) query.published = true;
 
-    dbo.collection("articles").findOne(query, (err, result) => {
-      if (err) console.log(err);
+    dbo.collection("articles")
+    .findOne(query, (err, result) => {
+      if (err) return res.status(500).send("Error querying the DB for article")
       db.close();
       res.send(result)
     });
@@ -131,7 +132,7 @@ app.post('/get_article', (req, res) => {
 
 app.post('/edit_article',authorization_middleware.middleware, (req, res) => {
   MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
-    if (err) throw err
+    if (err) return res.status(500).send("Error connecting to DB")
     var dbo = db.db(DB_config.DB_name)
 
     // separate id from rest of body
@@ -145,7 +146,7 @@ app.post('/edit_article',authorization_middleware.middleware, (req, res) => {
       upsert: true,
       returnOriginal: false,
     }, (err, result) => {
-      if (err) console.log(err);
+      if (err) return res.status(500).send("Error updating article in DB")
       db.close();
       res.send(result.value)
     });
@@ -154,12 +155,12 @@ app.post('/edit_article',authorization_middleware.middleware, (req, res) => {
 
 app.post('/delete_article',authorization_middleware.middleware, (req, res) => {
   MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
-    if (err) throw err
+    if (err) return res.status(500).send("Error connecting to DB")
     var dbo = db.db(DB_config.DB_name)
     dbo.collection("articles").deleteOne({
       _id: ObjectID(req.body._id)
     }, (err, result) => {
-      if (err) console.log(err);
+      if (err) return res.status(500).send("Error deleting article in DB")
       db.close();
       res.send('OK')
     });

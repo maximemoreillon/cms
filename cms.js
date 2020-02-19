@@ -12,20 +12,19 @@ const authorization_middleware = require('@moreillon/authorization_middleware');
 
 
 // Local modules
-const credentials = require('../common/credentials');
+const secrets = require('./secrets');
 
 // Parameters
 const port = 8050
-const uploads_directory_path = path.join(__dirname, 'uploaded_images')
 
-authorization_middleware.secret = credentials.jwt.secret
+authorization_middleware.secret = secrets.jwt_secret
 
 // MongoDB related
 const MongoClient = MongoDB.MongoClient;
 const ObjectID = MongoDB.ObjectID;
 
 const DB_config = {
-  URL: 'mongodb://localhost:27017/',
+  URL: secrets.mongodb_url,
   DB_name: 'CMS',
   options: { useUnifiedTopology: true },
 }
@@ -47,7 +46,7 @@ function check_authentication(req){
   // parse the headers to get the token
   let token = req.headers.authorization.split(" ")[1];
 
-  var decoded = jwt.verify(token, credentials.jwt.secret);
+  var decoded = jwt.verify(token, secrets.jwt_secret);
 
   if(decoded) return true
   else return false
@@ -167,26 +166,6 @@ app.post('/delete_article',authorization_middleware.middleware, (req, res) => {
   });
 })
 
-/*
-app.post('/image_upload', check_authentication, (req, res) => {
 
-  var form = new formidable.IncomingForm();
-  form.parse(req, (err, fields, files) => {
-    if (err) throw err;
-
-    if('image' in files){
-      var oldpath = files.image.path;
-      var new_file_name = uuidv1() + path.extname(files.image.name)
-      var newpath = uploads_directory_path + new_file_name;
-      fs.rename(oldpath, newpath, (err) => {
-        if (err) throw err;
-        res.send(new_file_name)
-      });
-    }
-    else   res.status(503)
-
-  });
-});
-*/
 
 app.listen(port, () => console.log(`CMS listening on port ${port}`))

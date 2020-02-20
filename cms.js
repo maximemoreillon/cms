@@ -47,6 +47,7 @@ function check_authentication(req){
   let token = req.headers.authorization.split(" ")[1];
 
   console.log(token)
+  console.log(secrets.jwt_secret)
 
   /*
   var decoded = jwt.verify(token, secrets.jwt_secret);

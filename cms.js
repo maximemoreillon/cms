@@ -25,7 +25,7 @@ const ObjectID = MongoDB.ObjectID;
 
 const DB_config = {
   URL: secrets.mongodb_url,
-  DB_name: 'CMS',
+  DB_name: 'cms',
   options: { useUnifiedTopology: true },
 }
 
@@ -34,7 +34,6 @@ const DB_config = {
 const app = express()
 app.use(bodyParser.json({limit: '50mb', extended: true}))
 app.use(express.static(path.join(__dirname, 'dist')))
-//app.use(express.static(uploads_directory_path)); // serve images
 app.use(cors())
 app.use(history())
 
@@ -50,7 +49,6 @@ function check_authentication(req){
 
   if(decoded) return true
   else return false
-
 
 }
 
@@ -70,7 +68,7 @@ app.post('/get_article_list', (req, res) => {
     // this is flimsy
     if(!check_authentication(req)) query.published = true;
 
-    // Do not get content to prevent a massive response
+    // Exclude content so as not to get a massive response
     db.db(DB_config.DB_name)
     .collection("articles")
     .find(query, {projection: {content: 0}})
@@ -118,7 +116,7 @@ app.post('/get_article', (req, res) => {
     var dbo = db.db(DB_config.DB_name)
 
     // Query by ID but if not logged in, only query public articles
-    var query = { _id: ObjectID(req.body._id) }
+    const query = { _id: ObjectID(req.body._id) }
     if(!check_authentication(req)) query.published = true;
 
     dbo.collection("articles")

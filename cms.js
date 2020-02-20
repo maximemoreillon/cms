@@ -40,21 +40,26 @@ app.use(history())
 function check_authentication(req){
   // Authorization using a JWT
 
+
   if(!req.headers.authorization) return false
 
   // parse the headers to get the token
   let token = req.headers.authorization.split(" ")[1];
 
+  console.log(token)
+
+  /*
   var decoded = jwt.verify(token, secrets.jwt_secret);
 
   if(decoded) return true
   else return false
+  */
+  return false
 
 }
 
 
 app.post('/get_article_list', (req, res) => {
-  console.log("[Express] Article list requested")
 
 
   MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {

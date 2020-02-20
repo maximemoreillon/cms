@@ -4,8 +4,8 @@ const express = require('express')
 const cors = require('cors')
 const cookieSession = require('cookie-session')
 const bodyParser = require('body-parser')
-const MongoDB = require('mongodb');
-const history = require('connect-history-api-fallback');
+const MongoDB = require('mongodb')
+const history = require('connect-history-api-fallback')
 const jwt = require('jsonwebtoken')
 const Cookies = require('cookies')
 const authorization_middleware = require('@moreillon/authorization_middleware');
@@ -40,7 +40,6 @@ app.use(history())
 function check_authentication(req){
   // Authorization using a JWT
 
-
   if(!req.headers.authorization) return false
 
   // parse the headers to get the token
@@ -49,13 +48,10 @@ function check_authentication(req){
   console.log(token)
   console.log(secrets.jwt_secret)
 
-  /*
-  var decoded = jwt.verify(token, secrets.jwt_secret);
+  let decoded = jwt.verify(token, secrets.jwt_secret);
 
   if(decoded) return true
   else return false
-  */
-  return false
 
 }
 

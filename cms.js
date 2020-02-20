@@ -48,7 +48,13 @@ function check_authentication(req){
   console.log(token)
   console.log(secrets.jwt_secret)
 
-  let decoded = jwt.verify(token, secrets.jwt_secret);
+  try {
+    let decoded = jwt.verify(token, secrets.jwt_secret);
+  }
+  catch(err) {
+    return false
+  }
+
 
   if(decoded) return true
   else return false

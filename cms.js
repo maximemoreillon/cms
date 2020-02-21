@@ -45,17 +45,12 @@ function check_authentication(req){
   // parse the headers to get the token
   let token = req.headers.authorization.split(" ")[1];
 
-  console.log(token)
-  console.log(secrets.jwt_secret)
-
   try {
     var decoded = jwt.verify(token, secrets.jwt_secret);
   }
-
   catch(err) {
     return false
   }
-
 
   if(decoded) return true
   else return false

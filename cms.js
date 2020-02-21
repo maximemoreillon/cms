@@ -32,10 +32,10 @@ const DB_config = {
 
 // Express related
 const app = express()
+app.use(history())
 app.use(bodyParser.json({limit: '50mb', extended: true}))
 app.use(express.static(path.join(__dirname, 'dist')))
 app.use(cors())
-app.use(history())
 
 function check_authentication(req){
   // Authorization using a JWT
@@ -48,16 +48,10 @@ function check_authentication(req){
   console.log(token)
   console.log(secrets.jwt_secret)
 
-  // verify the token
-  jwt.verify(token, secrets.jwt_secret, (err, decoded) => {
-    if(err) console.log("ERROR HERE")
-    else console.log("NO ERROR")
-  })
-
-
   try {
-    let decoded = jwt.verify(token, secrets.jwt_secret);
+    var decoded = jwt.verify(token, secrets.jwt_secret);
   }
+
   catch(err) {
     return false
   }

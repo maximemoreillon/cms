@@ -64,13 +64,14 @@ app.post('/get_article_list', (req, res) => {
   MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
     if (err) return res.status(500).send("Error connecting to DB")
 
-    // By default query everything but if not logged in only query published
     var query = {}
-    if(req.body.category) query.category = req.body.category;
-    if(req.body.tags) console.log("NOT IMPLEMENTED YET")
 
-    // this is flimsy
+    // Only get published items if not authenticated
     if(!check_authentication(req)) query.published = true;
+    if(req.body.category) query.category = req.body.category;
+    if(req.body.tags) query.tags = { $all: req.body.tags }
+
+
 
     // Exclude content so as not to get a massive response
     db.db(DB_config.DB_name)

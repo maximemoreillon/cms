@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: cms
-        image: moreillon/cms
+        image: 192.168.1.2:5000/cms
         ports:
         - containerPort: 8050
 ---

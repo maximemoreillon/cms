@@ -370,7 +370,7 @@ app.post('/get_navigation_items', authorization_middleware.middleware, (req, res
   })
 })
 
-app.post('/get_tags_of_article', authorization_middleware.middleware, (req, res) => {
+app.post('/get_tags_of_article', (req, res) => {
   // Route to get tags of a given article
   var session = driver.session()
   session
@@ -390,15 +390,14 @@ app.post('/get_tags_of_article', authorization_middleware.middleware, (req, res)
   })
 })
 
-app.post('/get_articles_of_tag', authorization_middleware.middleware, (req, res) => {
+app.post('/get_articles_of_tag', (req, res) => {
   // Route to get tags of a given article
-  // TODO: prevent unauthenticated users from seing private articles
+
   var session = driver.session()
   session
   .run(`
     MATCH (tag:Tag)-[:APPLIED_TO]->(article:Article)
     WHERE id(tag) = toInt({id}) ${check_authentication(req) ? '' : 'AND article.published = true'}
-
     RETURN article
     `, {
       id: req.body.id

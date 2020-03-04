@@ -353,7 +353,7 @@ app.post('/tag_article_neo4j', authorization_middleware.middleware, (req, res) =
 })
 
 
-app.post('/get_navigation_items', authorization_middleware.middleware, (req, res) => {
+app.post('/get_navigation_items', (req, res) => {
   // Route to get navbar items
   var session = driver.session()
   session

@@ -43,9 +43,9 @@ MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
     });
 
     console.log(articles[0])
+    console.log("MIGRATION HAS BEEN DONE ALREADY")
 
-
-
+    /*
     var session = driver.session()
     session
     .run(`
@@ -75,6 +75,7 @@ MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
       driver.close()
     })
     .catch(error => console.log(error))
+    */
 
 
   });

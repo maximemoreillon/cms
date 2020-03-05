@@ -63,25 +63,34 @@ function check_authentication(req){
 }
 
 
-app.post('/get_article_list_neo4j', (req, res) => {
-  // Route to get all articles
+app.post('/get_articles', (req, res) => {
+  // Route to get multiple articles
 
-  // TODO: COMBINE WITH get_articles_of_tag
-
-  let sorting_direction = undefined;
-  if(req.body.sort){
-    if(req.body.sort.direction) sorting_direction = req.body.sort.direction
+  let sort = {
+    by: undefined,
+    order: undefined,
   }
+
+  if(req.body.sort) sort = req.body.sort
 
   var session = driver.session()
   session
   .run(`
-    // Get all article nodes
+    // Get all articles
     MATCH (article:Article)
-    // Show private articles only to authenticated users
+
+    // Show only published articles to unauthenticated users
     ${check_authentication(req) ? '' : 'WHERE article.published = true'}
+
+    // Filter by tags
+    WITH article
+    ${req.body.tag ? 'MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag}.identity.low)' : ''}
+
+    // Return only articles since tags are sent using a different API call
     RETURN article
-    ORDER BY article.edition_date ${sorting_direction ? sorting_direction : 'DESC'}
+
+    // Sorting and ordering
+    ORDER BY ${sort.by ? sort.by : 'article.edition_date'} ${sort.order ? sort.order : 'DESC'}
     `, {
       tag: req.body.tag,
     })
@@ -90,11 +99,11 @@ app.post('/get_article_list_neo4j', (req, res) => {
     session.close()
   })
   .catch(error => {
-    res.status(500).send(`Error getting article list: ${error}`)
+    res.status(500).send(`Error getting articles: ${error}`)
   })
 })
 
-app.post('/get_article_neo4j', (req, res) => {
+app.post('/get_article', (req, res) => {
   // Route to get a single article
   var session = driver.session()
   session
@@ -115,7 +124,27 @@ app.post('/get_article_neo4j', (req, res) => {
   })
 })
 
-app.post('/create_article_neo4j', authorization_middleware.middleware, (req, res) => {
+app.post('/get_tags_of_article', (req, res) => {
+  // Route to get tags of a given article
+  var session = driver.session()
+  session
+  .run(`
+    MATCH (tag:Tag)-[:APPLIED_TO]->(article:Article)
+    WHERE id(article) = toInt({article}.identity.low)
+    RETURN tag
+    `, {
+      article: req.body.article
+    })
+  .then(result => {
+    res.send(result.records)
+    session.close()
+  })
+  .catch(error => {
+    res.status(500).send(`Error getting tags: ${error}`)
+  })
+})
+
+app.post('/create_article', authorization_middleware.middleware, (req, res) => {
   // Route to create an article
   // TODO: Check if there is a way to combine with update route using MERGE
   // TODO: deal with tags
@@ -162,7 +191,7 @@ app.post('/create_article_neo4j', authorization_middleware.middleware, (req, res
 
 })
 
-app.post('/update_article_neo4j', authorization_middleware.middleware, (req, res) => {
+app.post('/update_article', authorization_middleware.middleware, (req, res) => {
   // Route to delete an article
 
   // Conversion of date back to Neo4J object
@@ -230,7 +259,7 @@ app.post('/update_article_neo4j', authorization_middleware.middleware, (req, res
 })
 
 
-app.post('/delete_article_neo4j', authorization_middleware.middleware, (req, res) => {
+app.post('/delete_article', authorization_middleware.middleware, (req, res) => {
   // Route to delete an article
   var session = driver.session()
   session
@@ -251,7 +280,7 @@ app.post('/delete_article_neo4j', authorization_middleware.middleware, (req, res
 
 })
 
-app.post('/get_tag_list_neo4j', (req, res) => {
+app.post('/get_tag_list', (req, res) => {
   // Route to get all tags
   var session = driver.session()
   session
@@ -268,7 +297,7 @@ app.post('/get_tag_list_neo4j', (req, res) => {
   })
 })
 
-app.post('/get_tag_neo4j', (req, res) => {
+app.post('/get_tag', (req, res) => {
   // Route to get a single tag using its ID
   var session = driver.session()
   session
@@ -288,7 +317,7 @@ app.post('/get_tag_neo4j', (req, res) => {
   })
 })
 
-app.post('/create_tag_neo4j', authorization_middleware.middleware, (req, res) => {
+app.post('/create_tag', authorization_middleware.middleware, (req, res) => {
   // Route to create a single tag
   var session = driver.session()
   session
@@ -307,7 +336,7 @@ app.post('/create_tag_neo4j', authorization_middleware.middleware, (req, res) =>
   })
 })
 
-app.post('/update_tag_neo4j', authorization_middleware.middleware, (req, res) => {
+app.post('/update_tag', authorization_middleware.middleware, (req, res) => {
   // Route to update a single tag using
   var session = driver.session()
   session
@@ -328,7 +357,7 @@ app.post('/update_tag_neo4j', authorization_middleware.middleware, (req, res) =>
   })
 })
 
-app.post('/delete_tag_neo4j', authorization_middleware.middleware, (req, res) => {
+app.post('/delete_tag', authorization_middleware.middleware, (req, res) => {
   // Route to delete a single tag
   var session = driver.session()
   session
@@ -350,7 +379,7 @@ app.post('/delete_tag_neo4j', authorization_middleware.middleware, (req, res) =>
 })
 
 
-app.post('/tag_article_neo4j', authorization_middleware.middleware, (req, res) => {
+app.post('/tag_article', authorization_middleware.middleware, (req, res) => {
   // Route to apply a tag to an article
   // NOT USED YET
   var session = driver.session()
@@ -399,47 +428,9 @@ app.post('/get_navigation_items', (req, res) => {
   })
 })
 
-app.post('/get_tags_of_article', (req, res) => {
-  // Route to get tags of a given article
-  var session = driver.session()
-  session
-  .run(`
-    MATCH (tag:Tag)-[:APPLIED_TO]->(article:Article)
-    WHERE id(article) = toInt({id})
-    RETURN tag
-    `, {
-      id: req.body.id
-    })
-  .then(result => {
-    res.send(result.records)
-    session.close()
-  })
-  .catch(error => {
-    res.status(500).send(`Error getting tags: ${error}`)
-  })
-})
 
-app.post('/get_articles_of_tag', (req, res) => {
-  // Route to get tags of a given article
 
-  var session = driver.session()
-  session
-  .run(`
-    MATCH (tag:Tag)-[:APPLIED_TO]->(article:Article)
-    WHERE id(tag) = toInt({id}) ${check_authentication(req) ? '' : 'AND article.published = true'}
-    RETURN article
-    ORDER BY article.edition_date DESC
-    `, {
-      id: req.body.id
-    })
-  .then(result => {
-    res.send(result.records)
-    session.close()
-  })
-  .catch(error => {
-    res.status(500).send(`Error getting articles: ${error}`)
-  })
-})
+
 
 
 

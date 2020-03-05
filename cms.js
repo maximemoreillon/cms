@@ -115,9 +115,6 @@ app.post('/get_article_neo4j', (req, res) => {
   })
 })
 
-
-
-
 app.post('/create_article_neo4j', authorization_middleware.middleware, (req, res) => {
   // Route to create an article
   // TODO: Check if there is a way to combine with update route using MERGE

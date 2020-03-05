@@ -76,6 +76,7 @@ app.post('/get_article_list_neo4j', (req, res) => {
     // Show private articles only to authenticated users
     ${check_authentication(req) ? '' : 'WHERE article.published = true'}
     RETURN article
+    ORDER BY article.edition_date DESC
     `, {
       tag: req.body.tag,
     })
@@ -123,6 +124,10 @@ app.post('/create_article_neo4j', authorization_middleware.middleware, (req, res
     CREATE (article:Article)
     SET article = {article}.properties
 
+    // Add dates
+    SET article.creation_date = date()
+    SET article.edition_date = date()
+
     // Deal with tags EMPTY LISTS ARE A PAIN
     WITH article
 
@@ -157,6 +162,25 @@ app.post('/create_article_neo4j', authorization_middleware.middleware, (req, res
 
 app.post('/update_article_neo4j', authorization_middleware.middleware, (req, res) => {
   // Route to delete an article
+
+  // Conversion of date back to Neo4J object
+  // Neo4J is really bad for this
+  req.body.article.properties.creation_date = new neo4j.types.Date(
+    req.body.article.properties.creation_date.year.low,
+    req.body.article.properties.creation_date.month.low,
+    req.body.article.properties.creation_date.day.low
+  )
+
+  if('edition_date' in req.body.article.properties){
+    req.body.article.properties.edition_date = new neo4j.types.Date(
+      req.body.article.properties.edition_date.year.low,
+      req.body.article.properties.edition_date.month.low,
+      req.body.article.properties.edition_date.day.low
+    )
+  }
+
+
+
   var session = driver.session()
   session
   .run(`
@@ -164,6 +188,9 @@ app.post('/update_article_neo4j', authorization_middleware.middleware, (req, res
     MATCH (article:Article)
     WHERE id(article) = toInt({article}.identity.low)
     SET article = {article}.properties
+
+    // Set the date
+    SET article.edition_date = date()
 
     // Delete all relationships to tags so as to recreate the necessary ones
     WITH article
@@ -399,6 +426,7 @@ app.post('/get_articles_of_tag', (req, res) => {
     MATCH (tag:Tag)-[:APPLIED_TO]->(article:Article)
     WHERE id(tag) = toInt({id}) ${check_authentication(req) ? '' : 'AND article.published = true'}
     RETURN article
+    ORDER BY article.edition_date DESC
     `, {
       id: req.body.id
     })
@@ -410,123 +438,6 @@ app.post('/get_articles_of_tag', (req, res) => {
     res.status(500).send(`Error getting articles: ${error}`)
   })
 })
-
-
-///////////////////////////////
-// LEGACY CODE USING MONGODB //
-///////////////////////////////
-app.post('/get_article_list', (req, res) => {
-  MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
-    if (err) return res.status(500).send("Error connecting to DB")
-
-    var query = {}
-
-    // Only get published items if not authenticated
-    if(!check_authentication(req)) query.published = true;
-    if(req.body.category) query.category = req.body.category;
-    if(req.body.tags) query.tags = { $all: req.body.tags }
-
-
-
-    // Exclude content so as not to get a massive response
-    db.db(DB_config.DB_name)
-    .collection("articles")
-    .find(query, {projection: {content: 0}})
-    .sort({edit_date: -1, creation_date: -1})
-    .toArray( (err, result) => {
-      if (err) return res.status(500).send("Error querying the DB for article list")
-      db.close();
-      res.send(result)
-    });
-  });
-})
-
-app.post('/get_article_categories', (req, res) => {
-  MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
-    if (err) return res.status(500).send("Error connecting to DB")
-    var dbo = db.db(DB_config.DB_name)
-
-    dbo.collection("articles").find({}, {projection: { _id:0, category: 1}}).toArray( (err, result) => {
-      if (err) return res.status(500).send("Error querying the DB for categories")
-      db.close();
-      res.send(result)
-    });
-  });
-})
-
-app.post('/get_tags', (req, res) => {
-  MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
-    if (err) return res.status(500).send("Error connecting to DB")
-    db.db(DB_config.DB_name)
-    .collection("articles")
-    .distinct("tags", {}, (err, result) => {
-      if (err) return res.status(500).send("Error querying the DB for tags")
-      db.close();
-      res.send(result)
-    });
-  });
-})
-
-app.post('/get_article', (req, res) => {
-  // route to get load a single article for either viewing or editing
-
-  MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
-    if (err) return res.status(500).send("Error connecting to DB")
-    var dbo = db.db(DB_config.DB_name)
-
-    // Query by ID but if not logged in, only query public articles
-    const query = { _id: ObjectID(req.body._id) }
-    if(!check_authentication(req)) query.published = true;
-
-    dbo.collection("articles")
-    .findOne(query, (err, result) => {
-      if (err) return res.status(500).send("Error querying the DB for article")
-      db.close();
-      res.send(result)
-    });
-  });
-})
-
-app.post('/edit_article', authorization_middleware.middleware, (req, res) => {
-  MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
-    if (err) return res.status(500).send("Error connecting to DB")
-    var dbo = db.db(DB_config.DB_name)
-
-    // separate id from rest of body
-    const { _id, ...body_without_id } = req.body;
-
-    dbo.collection("articles").findOneAndUpdate({
-      _id: ObjectID(req.body._id)
-    }, {
-      $set: body_without_id
-    }, {
-      upsert: true,
-      returnOriginal: false,
-    }, (err, result) => {
-      if (err) return res.status(500).send("Error updating article in DB")
-      db.close();
-      res.send(result.value)
-    });
-  });
-})
-
-app.post('/delete_article',authorization_middleware.middleware, (req, res) => {
-  MongoClient.connect(DB_config.URL, DB_config.options, (err, db) => {
-    if (err) return res.status(500).send("Error connecting to DB")
-    var dbo = db.db(DB_config.DB_name)
-    dbo.collection("articles").deleteOne({
-      _id: ObjectID(req.body._id)
-    }, (err, result) => {
-      if (err) return res.status(500).send("Error deleting article in DB")
-      db.close();
-      res.send('OK')
-    });
-  });
-})
-
-///////////////////////////////
-// END OF CODE USING MONGODB //
-///////////////////////////////
 
 
 

@@ -68,6 +68,11 @@ app.post('/get_article_list_neo4j', (req, res) => {
 
   // TODO: COMBINE WITH get_articles_of_tag
 
+  let sorting_direction = undefined;
+  if(req.body.sort){
+    if(req.body.sort.direction) sorting_direction = req.body.sort.direction
+  }
+
   var session = driver.session()
   session
   .run(`
@@ -76,7 +81,7 @@ app.post('/get_article_list_neo4j', (req, res) => {
     // Show private articles only to authenticated users
     ${check_authentication(req) ? '' : 'WHERE article.published = true'}
     RETURN article
-    ORDER BY article.edition_date DESC
+    ORDER BY article.edition_date ${sorting_direction ? sorting_direction : 'DESC'}
     `, {
       tag: req.body.tag,
     })

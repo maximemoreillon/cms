@@ -84,7 +84,7 @@ app.post('/get_articles', (req, res) => {
 
     // Filter by tags
     WITH article
-    ${req.body.tag ? 'MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag}.identity.low)' : ''}
+    ${req.body.tag_id ? 'MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
 
     // Return only articles since tags are sent using a different API call
     RETURN article
@@ -92,7 +92,7 @@ app.post('/get_articles', (req, res) => {
     // Sorting and ordering
     ORDER BY ${sort.by ? sort.by : 'article.edition_date'} ${sort.order ? sort.order : 'DESC'}
     `, {
-      tag: req.body.tag,
+      tag_id: req.body.tag_id,
     })
   .then(result => {
     res.send(result.records)
@@ -109,11 +109,10 @@ app.post('/get_article', (req, res) => {
   session
   .run(`
     MATCH (article:Article)
-    WHERE id(article) = toInt({id})
-    OPTIONAL MATCH (article)--(tag:Tag)
-    RETURN article, tag
+    WHERE id(article) = toInt({article_id})
+    RETURN article
     `, {
-    id: req.body.id,
+    article_id: req.body.article_id
   })
   .then(result => {
     res.send(result.records)
@@ -130,10 +129,10 @@ app.post('/get_tags_of_article', (req, res) => {
   session
   .run(`
     MATCH (tag:Tag)-[:APPLIED_TO]->(article:Article)
-    WHERE id(article) = toInt({article}.identity.low)
+    WHERE id(article) = toInt({article_id})
     RETURN tag
     `, {
-      article: req.body.article
+      article_id: req.body.article_id
     })
   .then(result => {
     res.send(result.records)
@@ -144,10 +143,29 @@ app.post('/get_tags_of_article', (req, res) => {
   })
 })
 
+app.post('/get_author_of_article', (req, res) => {
+  // Route to get author of a given article
+  var session = driver.session()
+  session
+  .run(`
+    MATCH (author:User)<-[:WRITTEN_BY]-(article:Article)
+    WHERE id(article) = toInt({article_id})
+    RETURN author
+    `, {
+      article_id: req.body.article_id
+    })
+  .then(result => {
+    res.send(result.records)
+    session.close()
+  })
+  .catch(error => {
+    res.status(500).send(`Error getting author: ${error}`)
+  })
+})
+
 app.post('/create_article', authorization_middleware.middleware, (req, res) => {
   // Route to create an article
   // TODO: Check if there is a way to combine with update route using MERGE
-  // TODO: deal with tags
   var session = driver.session()
   session
   .run(`
@@ -159,18 +177,23 @@ app.post('/create_article', authorization_middleware.middleware, (req, res) => {
     SET article.creation_date = date()
     SET article.edition_date = date()
 
+    // Add relationship to author
+    WITH article
+    MATCH (author:User {username: {author_username}})
+    MERGE (article)-[:WRITTEN_BY]->(author)
+
     // Deal with tags EMPTY LISTS ARE A PAIN
     WITH article
 
     UNWIND
       CASE
-        WHEN {tags} = []
+        WHEN {tag_ids} = []
           THEN [null]
-        ELSE {tags}
-      END AS target_tag
+        ELSE {tag_ids}
+      END AS tag_id
 
     OPTIONAL MATCH (tag:Tag)
-    WHERE id(tag) = toInt(target_tag.identity.low)
+    WHERE id(tag) = toInt(tag_id)
     WITH collect(tag) as tags, article
     FOREACH(tag IN tags | MERGE (article)<-[:APPLIED_TO]-(tag))
 
@@ -179,7 +202,9 @@ app.post('/create_article', authorization_middleware.middleware, (req, res) => {
 
     `, {
     article: req.body.article,
-    tags: req.body.tags,
+    tag_ids: req.body.tag_ids,
+    // Not very elegant...
+    author_username: jwt.verify(req.headers.authorization.split(" ")[1], secrets.jwt_secret).username,
   })
   .then(result => {
     res.send(result.records)
@@ -210,13 +235,11 @@ app.post('/update_article', authorization_middleware.middleware, (req, res) => {
     )
   }
 
-
-
   var session = driver.session()
   session
   .run(`
     // Find the article node and update it
-    MATCH (article:Article)
+    MATCH (article:Article)-[:WRITTEN_BY]->(:User {username: {author_username}})
     WHERE id(article) = toInt({article}.identity.low)
     SET article = {article}.properties
 
@@ -233,13 +256,13 @@ app.post('/update_article', authorization_middleware.middleware, (req, res) => {
 
     UNWIND
       CASE
-        WHEN {tags} = []
+        WHEN {tag_ids} = []
           THEN [null]
-        ELSE {tags}
-      END AS target_tag
+        ELSE {tag_ids}
+      END AS tag_id
 
     OPTIONAL MATCH (tag:Tag)
-    WHERE id(tag) = toInt(target_tag.identity.low)
+    WHERE id(tag) = toInt(tag_id)
     WITH collect(tag) as tags, article
     FOREACH(tag IN tags | MERGE (article)<-[:APPLIED_TO]-(tag))
 
@@ -247,11 +270,15 @@ app.post('/update_article', authorization_middleware.middleware, (req, res) => {
     RETURN article
     `, {
     article: req.body.article,
-    tags: req.body.tags,
+    tag_ids: req.body.tag_ids,
+    // Not very elegant...
+    author_username: jwt.verify(req.headers.authorization.split(" ")[1], secrets.jwt_secret).username,
   })
   .then(result => {
-    res.send(result.records)
     session.close()
+    if(result.records.length === 0 ) return res.status(400).send(`Article could not be updated, probably due to insufficient permissions`)
+    res.send(result.records)
+
   })
   .catch(error => {
     res.status(500).send(`Error updating article: ${error}`)
@@ -261,18 +288,24 @@ app.post('/update_article', authorization_middleware.middleware, (req, res) => {
 
 app.post('/delete_article', authorization_middleware.middleware, (req, res) => {
   // Route to delete an article
+  // TODO check if really successful
   var session = driver.session()
   session
   .run(`
-    MATCH (article:Article)
-    WHERE id(article) = toInt({id})
+    MATCH (article:Article)-[:WRITTEN_BY]->(:User {username: {author_username}})
+    WHERE id(article) = toInt({article_id})
     DETACH DELETE article
+    RETURN 'success'
     `, {
-    id: req.body.id,
+    article_id: req.body.article_id,
+    // Not very elegant...
+    author_username: jwt.verify(req.headers.authorization.split(" ")[1], secrets.jwt_secret).username,
   })
   .then(result => {
-    res.send("Article deleted successfully")
     session.close()
+    if(result.records.length === 0 ) return res.status(400).send(`Article could not be deleted, probably due to insufficient permissions`)
+    res.send("Article deleted successfully")
+
   })
   .catch(error => {
     res.status(500).send(`Error deleting article: ${error}`)
@@ -280,8 +313,31 @@ app.post('/delete_article', authorization_middleware.middleware, (req, res) => {
 
 })
 
+
+app.post('/get_tag', (req, res) => {
+  // Route to get a single tag using its ID
+  // CANNOT HAVE THE WHOLE TAG IN THE BODY
+  var session = driver.session()
+  session
+  .run(`
+    MATCH (tag:Tag)
+    WHERE id(tag) = toInt({tag_id})
+    RETURN tag
+    `, {
+    tag_id: req.body.tag_id,
+  })
+  .then(result => {
+    res.send(result.records)
+    session.close()
+  })
+  .catch(error => {
+    res.status(500).send(`Error getting tag: ${error}`)
+  })
+})
+
 app.post('/get_tag_list', (req, res) => {
   // Route to get all tags
+  // NOT USED
   var session = driver.session()
   session
   .run(`
@@ -294,26 +350,6 @@ app.post('/get_tag_list', (req, res) => {
   })
   .catch(error => {
     res.status(500).send(`Error getting tag list: ${error}`)
-  })
-})
-
-app.post('/get_tag', (req, res) => {
-  // Route to get a single tag using its ID
-  var session = driver.session()
-  session
-  .run(`
-    MATCH (tag:Tag)
-    WHERE id(tag) = toInt({id})
-    RETURN tag
-    `, {
-    id: req.body.id,
-  })
-  .then(result => {
-    res.send(result.records)
-    session.close()
-  })
-  .catch(error => {
-    res.status(500).send(`Error getting tag: ${error}`)
   })
 })
 
@@ -363,11 +399,10 @@ app.post('/delete_tag', authorization_middleware.middleware, (req, res) => {
   session
   .run(`
     MATCH (tag:Tag)
-    WHERE id(tag) = toInt({id})
+    WHERE id(tag) = toInt({tag_id})
     DETACH DELETE tag
     `, {
-      // HERE, COULD GET THE WHOLE TAG
-    id: req.body.id,
+    tag_id: req.body.tag_id,
   })
   .then(result => {
     res.send("Tag deleted successfully")
@@ -379,9 +414,87 @@ app.post('/delete_tag', authorization_middleware.middleware, (req, res) => {
 })
 
 
+app.post('/create_comment', (req, res) => {
+  // Route to create a comment
+  var session = driver.session()
+  session
+  .run(`
+    // Find article node
+    MATCH (article:Article)
+    WHERE id(article) = toInt({article_id})
+    SET article.creation_date = date()
+
+    // Create comment
+    CREATE (comment:Comment)-[:ABOUT]->(article)
+    SET comment = {comment}.properties
+    SET comment.date = date()
+
+    RETURN comment
+    `, {
+    article_id: req.body.article_id,
+    comment: req.body.comment,
+  })
+  .then(result => {
+    res.send(result.records)
+    session.close()
+  })
+  .catch(error => {
+    res.status(500).send(`Error deleting tag: ${error}`)
+  })
+})
+
+app.post('/delete_comment', authorization_middleware.middleware, (req, res) => {
+  // Route to delete a comment
+  var session = driver.session()
+  session
+  .run(`
+    // Find article node
+    MATCH (comment:Comment)-[:ABOUT]->(:Article)-[:WRITTEN_BY]->(author:User {username :{author_username}})
+    WHERE id(comment) = toInt({comment_id})
+    DETACH DELETE comment
+    RETURN 'success'
+    `, {
+    comment_id: req.body.comment_id,
+    author_username: jwt.verify(req.headers.authorization.split(" ")[1], secrets.jwt_secret).username,
+  })
+  .then(result => {
+    session.close()
+    if(result.records.length === 0 ) return res.status(400).send(`Comment could not be deleted, probably due to insufficient permissions`)
+    res.send("Comment deleted successfully")
+  })
+  .catch(error => {
+    res.status(500).send(`Error deleting tag: ${error}`)
+  })
+})
+
+app.post('/get_comments_of_article', (req, res) => {
+  // Route to get comments of a given article
+  var session = driver.session()
+  session
+  .run(`
+    MATCH (comment:Comment)-[:ABOUT]->(article:Article)
+    WHERE id(article) = toInt({article_id})
+    RETURN comment
+    `, {
+      article_id: req.body.article_id
+    })
+  .then(result => {
+    res.send(result.records)
+    session.close()
+  })
+  .catch(error => {
+    res.status(500).send(`Error getting comments: ${error}`)
+  })
+})
+
+
+
+
+
+
 app.post('/tag_article', authorization_middleware.middleware, (req, res) => {
   // Route to apply a tag to an article
-  // NOT USED YET
+  // NOT USED
   var session = driver.session()
   session
   .run(`

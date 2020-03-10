@@ -288,14 +288,16 @@ app.post('/update_article', authorization_middleware.middleware, (req, res) => {
 
 app.post('/delete_article', authorization_middleware.middleware, (req, res) => {
   // Route to delete an article
-  // TODO check if really successful
+  console.log(jwt.verify(req.headers.authorization.split(" ")[1], secrets.jwt_secret).username)
   var session = driver.session()
   session
   .run(`
-    MATCH (comment:Comment)-[:ABOUT]->(article:Article)-[:WRITTEN_BY]->(:User {username: {author_username}})
+    MATCH (article:Article)-[:WRITTEN_BY]->(:User {username: {author_username}})
     WHERE id(article) = toInt({article_id})
-    DETACH DELETE article
+    WITH article
+    OPTIONAL MATCH (comment:Comment)-[:ABOUT]->(article)
     DETACH DELETE comment
+    DETACH DELETE article
     RETURN 'success'
     `, {
     article_id: req.body.article_id,

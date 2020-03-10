@@ -292,9 +292,10 @@ app.post('/delete_article', authorization_middleware.middleware, (req, res) => {
   var session = driver.session()
   session
   .run(`
-    MATCH (article:Article)-[:WRITTEN_BY]->(:User {username: {author_username}})
+    MATCH (comment:Comment)-[:ABOUT]->(article:Article)-[:WRITTEN_BY]->(:User {username: {author_username}})
     WHERE id(article) = toInt({article_id})
     DETACH DELETE article
+    DETACH DELETE comment
     RETURN 'success'
     `, {
     article_id: req.body.article_id,

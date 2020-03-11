@@ -177,6 +177,13 @@ app.post('/create_article', authorization_middleware.middleware, (req, res) => {
   .run(`
     // create the article node
     CREATE (article:Article)
+
+    // Remove previously set properties
+    REMOVE article.thumbnail_src
+    REMOVE article.summary
+    REMOVE article.title
+
+    // Set new properties
     SET article = {article}.properties
 
     // Add dates

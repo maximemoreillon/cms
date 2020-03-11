@@ -82,17 +82,23 @@ app.post('/get_articles', (req, res) => {
     // Show only published articles to unauthenticated users
     ${check_authentication(req) ? '' : 'WHERE article.published = true'}
 
-    // Filter by tags
+    // Filter by tags if provided
     WITH article
     ${req.body.tag_id ? 'MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
 
-    // Return only articles since tags are sent using a different API call
+    // Return only articles within set indices
+    // DIRT, IMPROVE!
+    WITH collect(article)${req.body.start_index ? '[{start_index}..{start_index}+10]' : '[0..10]'} as articles
+    UNWIND articles AS article
+
+    // Return only articles, tags are sent with a different call
     RETURN article
 
     // Sorting and ordering
     ORDER BY ${sort.by ? sort.by : 'article.edition_date'} ${sort.order ? sort.order : 'DESC'}
     `, {
       tag_id: req.body.tag_id,
+      start_index: req.body.start_index,
     })
   .then(result => {
     res.send(result.records)

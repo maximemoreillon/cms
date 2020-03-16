@@ -82,11 +82,13 @@ app.post('/get_articles', (req, res) => {
     // Show only published articles to unauthenticated users
     ${check_authentication(req) ? '' : 'WHERE article.published = true'}
 
+
     // Filter by tags if provided
     WITH article
     ${req.body.tag_id ? 'MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
 
     // Sorting and ordering
+    WITH article
     ORDER BY ${sort.by ? sort.by : 'article.edition_date'} ${sort.order ? sort.order : 'DESC'}
 
     // Return only articles within set indices
@@ -96,8 +98,6 @@ app.post('/get_articles', (req, res) => {
 
     // Return only articles, tags are sent with a different call
     RETURN article
-
-
     `, {
       tag_id: req.body.tag_id,
       start_index: req.body.start_index,
@@ -108,6 +108,7 @@ app.post('/get_articles', (req, res) => {
   })
   .catch(error => {
     res.status(500).send(`Error getting articles: ${error}`)
+    console.log(error)
   })
 })
 

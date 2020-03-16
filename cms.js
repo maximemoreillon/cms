@@ -301,7 +301,6 @@ app.post('/update_article', authorization_middleware.middleware, (req, res) => {
 
 app.post('/delete_article', authorization_middleware.middleware, (req, res) => {
   // Route to delete an article
-  console.log(jwt.verify(req.headers.authorization.split(" ")[1], secrets.jwt_secret).username)
   var session = driver.session()
   session
   .run(`

@@ -86,6 +86,9 @@ app.post('/get_articles', (req, res) => {
     WITH article
     ${req.body.tag_id ? 'MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
 
+    // Sorting and ordering
+    ORDER BY ${sort.by ? sort.by : 'article.edition_date'} ${sort.order ? sort.order : 'DESC'}
+
     // Return only articles within set indices
     // DIRT, IMPROVE!
     WITH collect(article)${req.body.start_index ? '[{start_index}..{start_index}+10]' : '[0..10]'} as articles
@@ -94,8 +97,7 @@ app.post('/get_articles', (req, res) => {
     // Return only articles, tags are sent with a different call
     RETURN article
 
-    // Sorting and ordering
-    ORDER BY ${sort.by ? sort.by : 'article.edition_date'} ${sort.order ? sort.order : 'DESC'}
+
     `, {
       tag_id: req.body.tag_id,
       start_index: req.body.start_index,

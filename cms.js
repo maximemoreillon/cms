@@ -73,6 +73,8 @@ app.post('/get_articles', (req, res) => {
 
   if(req.body.sort) sort = req.body.sort
 
+  console.log(req.body.search)
+
   var session = driver.session()
   session
   .run(`
@@ -82,10 +84,11 @@ app.post('/get_articles', (req, res) => {
     // Show only published articles to unauthenticated users
     ${check_authentication(req) ? '' : 'WHERE article.published = true'}
 
+    // Using search bar to find matching titles
+    ${req.body.search ? 'WITH article WHERE toLower(article.title) CONTAINS toLower({search})' : ''}
 
     // Filter by tags if provided
-    WITH article
-    ${req.body.tag_id ? 'MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
+    ${req.body.tag_id ? 'WITH article MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
 
     // Sorting and ordering
     WITH article
@@ -101,6 +104,7 @@ app.post('/get_articles', (req, res) => {
     `, {
       tag_id: req.body.tag_id,
       start_index: req.body.start_index,
+      search: req.body.search,
     })
   .then(result => {
     res.send(result.records)

@@ -75,17 +75,16 @@ app.post('/get_articles', (req, res) => {
     ${check_authentication(req) ? '' : 'WHERE article.published = true'}
 
     // Using search bar to find matching titles
-    //${req.body.search ? 'WITH article WHERE toLower(article.title) CONTAINS toLower({search})' : ''}
+    ${req.body.search ? 'WITH article WHERE toLower(article.title) CONTAINS toLower({search})' : ''}
 
     // Filter by tags if provided
-    //${req.body.tag_id ? 'WITH article MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
+    ${req.body.tag_id ? 'WITH article MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
 
     // Sorting and ordering
     // THIS IS A MESS BECAUSE NEO4J DOES NOT PARSE PARAMETERS PROPERLY HERE
     WITH article
     ORDER BY ${req.body.sort ? (req.body.sort === 'article.title' ? 'article.title' : 'article.edition_date') : 'article.edition_date'}
     ${req.body.order ? (req.body.order === 'ASC' ? 'ASC' : 'DESC') : 'DESC'}
-    //ORDER BY article.title
 
     // Return only articles within set indices
     WITH collect(article)[${req.body.start_index ? '{start_index}' : '0' }..${req.body.start_index ? '{start_index}' : '0' }+${req.body.batch_size ? '{batch_size}' : '10' }] as articles

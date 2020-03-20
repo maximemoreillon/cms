@@ -87,7 +87,7 @@ app.post('/get_articles', (req, res) => {
     ${req.body.order ? (req.body.order === 'ASC' ? 'ASC' : 'DESC') : 'DESC'}
 
     // Return only articles within set indices
-    WITH collect(article)[${req.body.start_index ? '{start_index}' : '0' }..${req.body.start_index ? '{start_index}' : '0' }+${req.body.batch_size ? '{batch_size}' : '10' }] as articles
+    WITH collect(article)[${req.body.start_index ? '{start_index}' : '0' }..${req.body.start_index ? '{start_index}' : '0' }+${req.body.batch_size ? '{batch_size}' : '10' }] as articles    
     UNWIND articles AS article
 
     // Return only articles, tags are sent with a different call
@@ -98,6 +98,42 @@ app.post('/get_articles', (req, res) => {
       search: req.body.search,
       sorting: req.body.sort,
       order: req.body.order,
+      batch_size: req.body.batch_size,
+    })
+  .then(result => {
+    res.send(result.records)
+    session.close()
+  })
+  .catch(error => {
+    res.status(500).send(`Error getting articles: ${error}`)
+    console.log(error)
+  })
+})
+
+app.post('/get_article_count', (req, res) => {
+  // Route to get multiple articles
+  var session = driver.session()
+  session
+  .run(`
+    // Get all articles
+    MATCH (article:Article)
+
+    // Show only published articles to unauthenticated users
+    ${check_authentication(req) ? '' : 'WHERE article.published = true'}
+
+    // Using search bar to find matching titles
+    ${req.body.search ? 'WITH article WHERE toLower(article.title) CONTAINS toLower({search})' : ''}
+
+    // Filter by tags if provided
+    ${req.body.tag_id ? 'WITH article MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
+
+
+    // Return only articles, tags are sent with a different call
+    RETURN count(article)
+    `, {
+      tag_id: req.body.tag_id,
+      start_index: req.body.start_index,
+      search: req.body.search,
       batch_size: req.body.batch_size,
     })
   .then(result => {

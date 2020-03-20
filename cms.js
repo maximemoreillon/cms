@@ -65,16 +65,6 @@ function check_authentication(req){
 
 app.post('/get_articles', (req, res) => {
   // Route to get multiple articles
-
-  let sort = {
-    by: undefined,
-    order: undefined,
-  }
-
-  if(req.body.sort) sort = req.body.sort
-
-  console.log(req.body.search)
-
   var session = driver.session()
   session
   .run(`
@@ -85,18 +75,20 @@ app.post('/get_articles', (req, res) => {
     ${check_authentication(req) ? '' : 'WHERE article.published = true'}
 
     // Using search bar to find matching titles
-    ${req.body.search ? 'WITH article WHERE toLower(article.title) CONTAINS toLower({search})' : ''}
+    //${req.body.search ? 'WITH article WHERE toLower(article.title) CONTAINS toLower({search})' : ''}
 
     // Filter by tags if provided
-    ${req.body.tag_id ? 'WITH article MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
+    //${req.body.tag_id ? 'WITH article MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
 
     // Sorting and ordering
+    // THIS IS A MESS BECAUSE NEO4J DOES NOT PARSE PARAMETERS PROPERLY HERE
     WITH article
-    ORDER BY ${sort.by ? sort.by : 'article.edition_date'} ${sort.order ? sort.order : 'DESC'}
+    ORDER BY ${req.body.sort ? (req.body.sort === 'article.title' ? 'article.title' : 'article.edition_date') : 'article.edition_date'}
+    ${req.body.order ? (req.body.order === 'ASC' ? 'ASC' : 'DESC') : 'DESC'}
+    //ORDER BY article.title
 
     // Return only articles within set indices
-    // DIRT, IMPROVE!
-    WITH collect(article)${req.body.start_index ? '[{start_index}..{start_index}+10]' : '[0..10]'} as articles
+    WITH collect(article)[${req.body.start_index ? '{start_index}' : '0' }..${req.body.start_index ? '{start_index}' : '0' }+${req.body.batch_size ? '{batch_size}' : '10' }] as articles
     UNWIND articles AS article
 
     // Return only articles, tags are sent with a different call
@@ -105,6 +97,9 @@ app.post('/get_articles', (req, res) => {
       tag_id: req.body.tag_id,
       start_index: req.body.start_index,
       search: req.body.search,
+      sorting: req.body.sort,
+      order: req.body.order,
+      batch_size: req.body.batch_size,
     })
   .then(result => {
     res.send(result.records)

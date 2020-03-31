@@ -44,7 +44,7 @@ app.use(cors())
 
 
 
-function get_user_with_promise(req) {
+function get_user_from_jwt(req) {
 
   return new Promise( (resolve, reject) => {
     if(!('authorization' in req.headers)) return reject(`No token in authorization header`)
@@ -52,15 +52,9 @@ function get_user_with_promise(req) {
     let token = req.headers.authorization.split(" ")[1];
     if(!token) return reject(`No token in authorization header`)
 
-    axios.post(secrets.authentication_api_url, {
-      jwt: token
-    })
-    .then(response => {
-      resolve(response.data)
-    })
-    .catch(error => {
-      reject(error)
-    })
+    axios.post(secrets.authentication_api_url, { jwt: token })
+    .then(response => { resolve(response.data) })
+    .catch(error => { reject(error) })
 
   })
 }
@@ -69,7 +63,7 @@ function get_user_with_promise(req) {
 app.post('/get_articles', (req, res) => {
 
   var user = undefined;
-  get_user_with_promise(req)
+  get_user_from_jwt(req)
   .then(result => user = result)
   .catch(err => console.log(err))
   .finally( () => {
@@ -111,14 +105,9 @@ app.post('/get_articles', (req, res) => {
         order: req.body.order,
         batch_size: req.body.batch_size,
       })
-    .then(result => {
-      res.send(result.records)
-      session.close()
-    })
-    .catch(error => {
-      res.status(500).send(`Error getting articles: ${error}`)
-      console.log(error)
-    })
+    .then(result => { res.send(result.records) })
+    .catch(error => { res.status(500).send(`Error getting articles: ${error}`) })
+    .finally(() => { session.close() })
 
   })
 
@@ -129,7 +118,7 @@ app.post('/get_article_count', (req, res) => {
   // Route to get multiple articles
 
   var user = undefined;
-  get_user_with_promise(req)
+  get_user_from_jwt(req)
   .then(result => user = result)
   .catch(err => console.log(err))
   .finally( () => {
@@ -157,14 +146,9 @@ app.post('/get_article_count', (req, res) => {
         search: req.body.search,
         batch_size: req.body.batch_size,
       })
-    .then(result => {
-      res.send(result.records)
-      session.close()
-    })
-    .catch(error => {
-      res.status(500).send(`Error getting articles: ${error}`)
-      console.log(error)
-    })
+    .then(result => { res.send(result.records) })
+    .catch(error => { res.status(500).send(`Error getting articles: ${error}`) })
+    .finally(() => { session.close() })
   })
 
 
@@ -173,7 +157,7 @@ app.post('/get_article_count', (req, res) => {
 app.post('/get_article', (req, res) => {
   // Route to get a single article
   var user = undefined;
-  get_user_with_promise(req)
+  get_user_from_jwt(req)
   .then(result => user = result)
   .catch(err => console.log(err))
   .finally( () => {
@@ -186,13 +170,9 @@ app.post('/get_article', (req, res) => {
       `, {
       article_id: req.body.article_id
     })
-    .then(result => {
-      res.send(result.records)
-      session.close()
-    })
-    .catch(error => {
-      res.status(500).send(`Error getting article: ${error}`)
-    })
+    .then(result => { res.send(result.records) })
+    .catch(error => { res.status(500).send(`Error getting article: ${error}`) })
+    .finally(() => { session.close() })
   })
 
 })
@@ -201,7 +181,7 @@ app.post('/get_tags_of_article', (req, res) => {
   // Route to get tags of a given article
 
   var user = undefined;
-  get_user_with_promise(req)
+  get_user_from_jwt(req)
   .then(result => user = result)
   .catch(err => console.log(err))
   .finally( () => {
@@ -214,13 +194,9 @@ app.post('/get_tags_of_article', (req, res) => {
       `, {
         article_id: req.body.article_id
       })
-    .then(result => {
-      res.send(result.records)
-      session.close()
-    })
-    .catch(error => {
-      res.status(500).send(`Error getting tags: ${error}`)
-    })
+    .then(result => { res.send(result.records) })
+    .catch(error => { res.status(500).send(`Error getting tags: ${error}`) })
+    .finally(() => { session.close() })
   })
 })
 
@@ -228,7 +204,7 @@ app.post('/get_author_of_article', (req, res) => {
   // Route to get author of a given article
 
   var user = undefined;
-  get_user_with_promise(req)
+  get_user_from_jwt(req)
   .then(result => user = result)
   .catch(err => console.log(err))
   .finally( () => {
@@ -241,13 +217,9 @@ app.post('/get_author_of_article', (req, res) => {
       `, {
         article_id: req.body.article_id
       })
-    .then(result => {
-      res.send(result.records)
-      session.close()
-    })
-    .catch(error => {
-      res.status(500).send(`Error getting author: ${error}`)
-    })
+    .then(result => { res.send(result.records) })
+    .catch(error => { res.status(500).send(`Error getting author: ${error}`) })
+    .finally(() => { session.close() })
   })
 
 })
@@ -256,7 +228,7 @@ app.post('/create_article', (req, res) => {
   // Route to create an article
   // TODO: Check if there is a way to combine with update route using MERGE
 
-  get_user_with_promise(req)
+  get_user_from_jwt(req)
   .then(user => {
     var session = driver.session()
     session
@@ -299,13 +271,9 @@ app.post('/create_article', (req, res) => {
       tag_ids: req.body.tag_ids,
       author_username: user.properties.username,
     })
-    .then(result => {
-      session.close()
-      res.send(result.records)
-    })
-    .catch(error => {
-      res.status(500).send(`Error creating article: ${error}`)
-    })
+    .then(result => { res.send(result.records) })
+    .catch(error => { res.status(500).send(`Error creating article: ${error}`) })
+    .finally(() => { session.close() })
   })
   .catch(err => res.status(500).send(`Authentication error: ${err}`))
 
@@ -316,7 +284,7 @@ app.post('/create_article', (req, res) => {
 app.post('/update_article', (req, res) => {
   // Route to delete an article
 
-  get_user_with_promise(req)
+  get_user_from_jwt(req)
   .then(user => {
     // Conversion of date back to Neo4J object
     // Neo4J is really bad for this
@@ -380,14 +348,10 @@ app.post('/update_article', (req, res) => {
       author_username: user.properties.username,
     })
     .then(result => {
-      session.close()
       if(result.records.length === 0 ) return res.status(400).send(`Article could not be updated, probably due to insufficient permissions`)
-      res.send(result.records)
-
-    })
-    .catch(error => {
-      res.status(500).send(`Error updating article: ${error}`)
-    })
+      res.send(result.records) })
+    .catch(error => { res.status(500).send(`Error updating article: ${error}`) })
+    .finally(() => { session.close() })
   })
   .catch(err => res.status(403).send(`Authentication error: ${err}`))
 
@@ -398,7 +362,7 @@ app.post('/update_article', (req, res) => {
 
 app.post('/delete_article', (req, res) => {
   // Route to delete an article
-  get_user_with_promise(req)
+  get_user_from_jwt(req)
   .then(user => {
     var session = driver.session()
     session
@@ -415,13 +379,16 @@ app.post('/delete_article', (req, res) => {
       author_username: user.properties.username,
     })
     .then(result => {
-      session.close()
+
       if(result.records.length === 0 ) return res.status(400).send(`Article could not be deleted, probably due to insufficient permissions`)
       res.send("Article deleted successfully")
 
     })
     .catch(error => {
       res.status(500).send(`Error deleting article: ${error}`)
+    })
+    .finally(() => {
+      session.close()
     })
   })
   .catch(err => res.status(403).send(`Authentication error: ${err}`))
@@ -441,13 +408,9 @@ app.post('/get_tag', (req, res) => {
     `, {
     tag_id: req.body.tag_id,
   })
-  .then(result => {
-    res.send(result.records)
-    session.close()
-  })
-  .catch(error => {
-    res.status(500).send(`Error getting tag: ${error}`)
-  })
+  .then(result => { res.send(result.records) })
+  .catch(error => { res.status(500).send(`Error getting tag: ${error}`) })
+  .finally(() => { session.close() })
 })
 
 app.post('/get_tag_list', (req, res) => {
@@ -459,18 +422,14 @@ app.post('/get_tag_list', (req, res) => {
     MATCH (tag:Tag)
     RETURN tag
     `, {})
-  .then(result => {
-    res.send(result.records)
-    session.close()
-  })
-  .catch(error => {
-    res.status(500).send(`Error getting tag list: ${error}`)
-  })
+  .then(result => { res.send(result.records) })
+  .catch(error => { res.status(500).send(`Error getting tag list: ${error}`) })
+  .finally(() => { session.close() })
 })
 
 app.post('/create_tag', (req, res) => {
   // Route to create a single tag
-  get_user_with_promise(req)
+  get_user_from_jwt(req)
   .then(user => {
     var session = driver.session()
     session
@@ -480,13 +439,9 @@ app.post('/create_tag', (req, res) => {
       `, {
       tag_name: req.body.tag_name,
     })
-    .then(result => {
-      res.send(result.records)
-      session.close()
-    })
-    .catch(error => {
-      res.status(500).send(`Error creating tag: ${error}`)
-    })
+    .then(result => { res.send(result.records) })
+    .catch(error => { res.status(500).send(`Error creating tag: ${error}`) })
+    .finally(() => { session.close() })
   })
   .catch(err => res.status(403).send(`Authentication error: ${err}`))
 
@@ -495,7 +450,7 @@ app.post('/create_tag', (req, res) => {
 
 app.post('/update_tag', (req, res) => {
   // Route to update a single tag using
-  get_user_with_promise(req)
+  get_user_from_jwt(req)
   .then(user => {
     var session = driver.session()
     session
@@ -507,13 +462,9 @@ app.post('/update_tag', (req, res) => {
       `, {
       tag: req.body.tag,
     })
-    .then(result => {
-      res.send(result.records)
-      session.close()
-    })
-    .catch(error => {
-      res.status(500).send(`Error updating tag: ${error}`)
-    })
+    .then(result => { res.send(result.records) })
+    .catch(error => { res.status(500).send(`Error updating tag: ${error}`) })
+    .finally(() => { session.close() })
   })
   .catch(err => res.status(403).send(`Authentication error: ${err}`))
 })
@@ -521,7 +472,7 @@ app.post('/update_tag', (req, res) => {
 app.post('/delete_tag', (req, res) => {
   // Route to delete a single tag
   // Todo: check if tag attached to article of user only
-  get_user_with_promise(req)
+  get_user_from_jwt(req)
   .then(user => {
     var session = driver.session()
     session
@@ -532,13 +483,9 @@ app.post('/delete_tag', (req, res) => {
       `, {
       tag_id: req.body.tag_id,
     })
-    .then(result => {
-      res.send("Tag deleted successfully")
-      session.close()
-    })
-    .catch(error => {
-      res.status(500).send(`Error deleting tag: ${error}`)
-    })
+    .then(result => { res.send("Tag deleted successfully") })
+    .catch(error => { res.status(500).send(`Error deleting tag: ${error}`) })
+    .finally(() => { session.close() })
   })
   .catch(err => res.status(403).send(`Authentication error: ${err}`))
 })
@@ -564,18 +511,14 @@ app.post('/create_comment', (req, res) => {
     article_id: req.body.article_id,
     comment: req.body.comment,
   })
-  .then(result => {
-    res.send(result.records)
-    session.close()
-  })
-  .catch(error => {
-    res.status(500).send(`Error deleting tag: ${error}`)
-  })
+  .then(result => { res.send(result.records) })
+  .catch(error => { res.status(500).send(`Error creatin comment: ${error}`) })
+  .finally(() => { session.close() })
 })
 
 app.post('/delete_comment', (req, res) => {
   // Route to delete a comment
-  get_user_with_promise(req)
+  get_user_from_jwt(req)
   .then(user => {
 
     var session = driver.session()
@@ -591,35 +534,37 @@ app.post('/delete_comment', (req, res) => {
       author_username: user.properties.username,
     })
     .then(result => {
-      session.close()
       if(result.records.length === 0 ) return res.status(400).send(`Comment could not be deleted, probably due to insufficient permissions`)
       res.send("Comment deleted successfully")
     })
-    .catch(error => {
-      res.status(500).send(`Error deleting tag: ${error}`)
-    })
+    .catch(error => { res.status(500).send(`Error deleting tag: ${error}`) })
+    .finally(() => { session.close() })
   })
   .catch(err => res.status(403).send(`Authentication error: ${err}`))
 })
 
 app.post('/get_comments_of_article', (req, res) => {
   // Route to get comments of a given article
-  var session = driver.session()
-  session
-  .run(`
-    MATCH (comment:Comment)-[:ABOUT]->(article:Article)
-    WHERE id(article) = toInt({article_id})
-    RETURN comment
-    `, {
-      article_id: req.body.article_id
-    })
-  .then(result => {
-    res.send(result.records)
-    session.close()
+
+  var user = undefined;
+  get_user_from_jwt(req)
+  .then(result => user = result)
+  .catch(err => console.log(err))
+  .finally( () => {
+    var session = driver.session()
+    session
+    .run(`
+      MATCH (comment:Comment)-[:ABOUT]->(article:Article)
+      WHERE id(article) = toInt({article_id}) ${user ? '' : 'AND WHERE article.published = true'}
+      RETURN comment
+      `, {
+        article_id: req.body.article_id
+      })
+    .then(result => { res.send(result.records) })
+    .catch(error => { res.status(500).send(`Error getting comments: ${error}`) })
+    .finally(() => { session.close() })
   })
-  .catch(error => {
-    res.status(500).send(`Error getting comments: ${error}`)
-  })
+
 })
 
 
@@ -632,13 +577,8 @@ app.post('/get_navigation_items', (req, res) => {
     MATCH (tag:Tag {navigation_item: true})
     RETURN tag
     `, {})
-  .then(result => {
-    res.send(result.records)
-    session.close()
-  })
-  .catch(error => {
-    res.status(500).send(`Error getting navigation items: ${error}`)
-  })
+  .then(result => { res.send(result.records) })
+  .catch(error => { res.status(500).send(`Error getting navigation items: ${error}`) })
 })
 
 

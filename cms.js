@@ -117,7 +117,7 @@ app.post('/get_article_count', identification_middleware.middleware, (req, res) 
     session
     .run(`
       // Get all articles
-      MATCH (article:Article)
+      MATCH (article:Article)-[:WRITTEN_BY]->(author:User)
 
       // Show only published articles or articles written by user
       WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
@@ -155,6 +155,7 @@ app.post('/get_article', identification_middleware.middleware, (req, res) => {
 
       // Show only published articles or articles written by user
       WITH article
+      MATCH (article)-[:WRITTEN_BY]->(author:User)
       WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
       RETURN article
@@ -179,6 +180,7 @@ app.post('/get_tags_of_article', identification_middleware.middleware,  (req, re
 
       // NOT SURE IF FILTERING WORKS
       WITH tag, article
+      MATCH (article)-[:WRITTEN_BY]->(author:User)
       WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
       RETURN tag
@@ -535,6 +537,7 @@ app.post('/get_comments_of_article', identification_middleware.middleware, (req,
       WHERE id(article) = toInt({article_id})
 
       WITH comment, article
+      MATCH (article)-[:WRITTEN_BY]->(author:User)
       WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
       RETURN comment

@@ -49,19 +49,9 @@ app.use(cors())
 
 
 
-function get_user_from_jwt(req) {
-
-  return new Promise( (resolve, reject) => {
-    if(!('authorization' in req.headers)) return reject(`No token in authorization header`)
-
-    let token = req.headers.authorization.split(" ")[1];
-    if(!token) return reject(`No token in authorization header`)
-
-    axios.post(secrets.authentication_api_url, { jwt: token })
-    .then(response => { resolve(response.data) })
-    .catch(error => { reject(error) })
-
-  })
+function return_user_id(res) {
+  if(res.locals.user) return res.locals.user.identity.low
+  else return undefined
 }
 
 
@@ -70,24 +60,25 @@ function get_user_from_jwt(req) {
 
 app.post('/get_articles', identification_middleware.middleware, (req, res) => {
 
-
-
     // Route to get multiple articles
+
     var session = driver.session()
     session
     .run(`
       // Get all articles
-      MATCH (article:Article)
+      MATCH (article:Article)-[:WRITTEN_BY]->(author:User)
 
-      // Show only published articles to unauthenticated users
-      // TODO: SHOW PUBLISHED BY USER INSTEAD OF ALL PUBLISHED
-      ${res.locals.user ? '' : 'WHERE article.published = true'}
+      // Show only published articles or articles written by user
+      WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
       // Using search bar to find matching titles
       ${req.body.search ? 'WITH article WHERE toLower(article.title) CONTAINS toLower({search})' : ''}
 
-      // Filter by tags if provided
+      // Filter by tag if provided
       ${req.body.tag_id ? 'WITH article MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
+
+      // Filter by user if provided
+      ${req.body.author_id ? 'WITH article MATCH (author:User)<-[:WRITTEN_BY]-(article) WHERE id(author) = toInt({author_id})' : ''}
 
       // Sorting and ordering
       // THIS IS A MESS BECAUSE NEO4J DOES NOT PARSE PARAMETERS PROPERLY HERE
@@ -102,6 +93,8 @@ app.post('/get_articles', identification_middleware.middleware, (req, res) => {
       // Return only articles, tags are sent with a different call
       RETURN article
       `, {
+        current_user_id: return_user_id(res),
+        author_id: req.body.author_id,
         tag_id: req.body.tag_id,
         start_index: req.body.start_index,
         search: req.body.search,
@@ -126,8 +119,8 @@ app.post('/get_article_count', identification_middleware.middleware, (req, res) 
       // Get all articles
       MATCH (article:Article)
 
-      // Show only published articles to unauthenticated users
-      ${res.locals.user ? '' : 'WHERE article.published = true'}
+      // Show only published articles or articles written by user
+      WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
       // Using search bar to find matching titles
       ${req.body.search ? 'WITH article WHERE toLower(article.title) CONTAINS toLower({search})' : ''}
@@ -138,6 +131,7 @@ app.post('/get_article_count', identification_middleware.middleware, (req, res) 
       // Return only articles, tags are sent with a different call
       RETURN count(article)
       `, {
+        current_user_id: return_user_id(res),
         tag_id: req.body.tag_id,
         start_index: req.body.start_index,
         search: req.body.search,
@@ -159,11 +153,13 @@ app.post('/get_article', identification_middleware.middleware, (req, res) => {
       MATCH (article:Article)
       WHERE id(article) = toInt({article_id})
 
+      // Show only published articles or articles written by user
       WITH article
-      ${res.locals.user ? '' : 'WHERE article.published = true'}
+      WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
       RETURN article
       `, {
+      current_user_id: return_user_id(res),
       article_id: req.body.article_id
     })
     .then(result => { res.send(result.records) })
@@ -183,11 +179,11 @@ app.post('/get_tags_of_article', identification_middleware.middleware,  (req, re
 
       // NOT SURE IF FILTERING WORKS
       WITH tag, article
-      ${res.locals.user ? '' : 'WHERE article.published = true'}
-
+      WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
       RETURN tag
       `, {
+        current_user_id: return_user_id(res),
         article_id: req.body.article_id
       })
     .then(result => { res.send(result.records) })
@@ -207,10 +203,11 @@ app.post('/get_author_of_article', identification_middleware.middleware, (req, r
 
       // NOT SURE IF FILTERING WORKS
       WITH author, article
-      ${res.locals.user ? '' : 'WHERE article.published = true'}
+      WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
       RETURN author
       `, {
+        current_user_id: return_user_id(res),
         article_id: req.body.article_id
       })
     .then(result => { res.send(result.records) })
@@ -238,7 +235,8 @@ app.post('/create_article', authentication_middleware.middleware, (req, res) => 
 
       // Add relationship to author
       WITH article
-      MATCH (author:User {username: {author_username}})
+      MATCH (author:User)
+      WHERE id(author)=toInt({author_id})
       MERGE (article)-[:WRITTEN_BY]->(author)
 
       // Deal with tags EMPTY LISTS ARE A PAIN
@@ -262,7 +260,7 @@ app.post('/create_article', authentication_middleware.middleware, (req, res) => 
       `, {
       article: req.body.article,
       tag_ids: req.body.tag_ids,
-      author_username: res.locals.user.properties.username,
+      author_id: res.locals.user.identity.low,
     })
     .then(result => { res.send(result.records) })
     .catch(error => { res.status(500).send(`Error creating article: ${error}`) })
@@ -296,8 +294,8 @@ app.post('/update_article', authentication_middleware.middleware, (req, res) => 
   session
   .run(`
     // Find the article node and update it
-    MATCH (article:Article)-[:WRITTEN_BY]->(:User {username: {author_username}})
-    WHERE id(article) = toInt({article}.identity.low)
+    MATCH (article:Article)-[:WRITTEN_BY]->(author:User)
+    WHERE id(article) = toInt({article}.identity.low) AND WHERE id(author)=toInt({author_id})
 
     // Remove previously set properties
     REMOVE article.thumbnail_src
@@ -335,7 +333,7 @@ app.post('/update_article', authentication_middleware.middleware, (req, res) => 
     `, {
     article: req.body.article,
     tag_ids: req.body.tag_ids,
-    author_username: res.locals.user.properties.username,
+    author_id: res.locals.user.identity.low,
   })
   .then(result => {
     if(result.records.length === 0 ) return res.status(400).send(`Article could not be updated, probably due to insufficient permissions`)
@@ -355,16 +353,20 @@ app.post('/delete_article', authentication_middleware.middleware, (req, res) => 
   var session = driver.session()
   session
   .run(`
-    MATCH (article:Article)-[:WRITTEN_BY]->(:User {username: {author_username}})
-    WHERE id(article) = toInt({article_id})
+    MATCH (article:Article)-[:WRITTEN_BY]->(author:User)
+    WHERE id(article) = toInt({article_id}) AND WHERE id(author)=toInt({author_id})
+
+    // Deal with comments
     WITH article
     OPTIONAL MATCH (comment:Comment)-[:ABOUT]->(article)
     DETACH DELETE comment
+
+    // Delete article itself
     DETACH DELETE article
     RETURN 'success'
     `, {
     article_id: req.body.article_id,
-    author_username: res.locals.user.properties.username,
+    author_id: res.locals.user.identity.low,
   })
   .then(result => {
 
@@ -402,7 +404,7 @@ app.post('/get_tag', (req, res) => {
 
 app.post('/get_tag_list', (req, res) => {
   // Route to get all tags
-  
+
   var session = driver.session()
   session
   .run(`
@@ -476,6 +478,7 @@ app.post('/delete_tag', authentication_middleware.middleware, (req, res) => {
 
 app.post('/create_comment', (req, res) => {
   // Route to create a comment
+  // TODO: Prevent commenting on unpublished articles
   var session = driver.session()
   session
   .run(`
@@ -505,13 +508,13 @@ app.post('/delete_comment', authentication_middleware.middleware, (req, res) => 
   session
   .run(`
     // Find article node
-    MATCH (comment:Comment)-[:ABOUT]->(:Article)-[:WRITTEN_BY]->(author:User {username :{author_username}})
-    WHERE id(comment) = toInt({comment_id})
+    MATCH (comment:Comment)-[:ABOUT]->(:Article)-[:WRITTEN_BY]->(author:User)
+    WHERE id(comment) = toInt({comment_id}) AND WHERE id(author)=toInt({author_id})
     DETACH DELETE comment
     RETURN 'success'
     `, {
     comment_id: req.body.comment_id,
-    author_username: user.properties.username,
+    author_id: res.locals.user.identity.low,
   })
   .then(result => {
     if(result.records.length === 0 ) return res.status(400).send(`Comment could not be deleted, probably due to insufficient permissions`)
@@ -532,11 +535,12 @@ app.post('/get_comments_of_article', identification_middleware.middleware, (req,
       WHERE id(article) = toInt({article_id})
 
       WITH comment, article
-      ${res.locals.user ? '' : 'WHERE article.published = true'}
+      WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
       RETURN comment
       `, {
-        article_id: req.body.article_id
+        current_user_id: return_user_id(res),
+        article_id: req.body.article_id,
       })
     .then(result => { res.send(result.records) })
     .catch(error => { res.status(500).send(`Error getting comments: ${error}`) })

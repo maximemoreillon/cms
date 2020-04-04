@@ -4,7 +4,6 @@ const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const MongoDB = require('mongodb')
-const history = require('connect-history-api-fallback')
 const authentication_middleware = require('@moreillon/authentication_middleware');
 
 const neo4j = require('neo4j-driver');
@@ -40,9 +39,7 @@ const driver = neo4j.driver(
 
 // Express related
 const app = express()
-app.use(history())
 app.use(bodyParser.json({limit: '50mb', extended: true}))
-app.use(express.static(path.join(__dirname, 'dist')))
 app.use(cors())
 
 
@@ -55,6 +52,9 @@ function return_user_id(res) {
 }
 
 
+app.get('/', (req, res) => {
+  res.send(`CMS`)
+})
 
 
 

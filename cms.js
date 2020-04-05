@@ -86,12 +86,15 @@ app.post('/get_articles', identification_middleware.middleware, (req, res) => {
       ORDER BY ${req.body.sort ? (req.body.sort === 'article.title' ? 'article.title' : 'article.edition_date') : 'article.edition_date'}
       ${req.body.order ? (req.body.order === 'ASC' ? 'ASC' : 'DESC') : 'DESC'}
 
-      // Return only articles within set indices
-      WITH collect(article)[${req.body.start_index ? '{start_index}' : '0' }..${req.body.start_index ? '{start_index}' : '0' }+${req.body.batch_size ? '{batch_size}' : '10' }] as articles
-      UNWIND articles AS article
+      // Collect everything for count
+      WITH count(article) as article_count, collect(article) as article_collection
+
+      // Return only articles by batch
+      WITH article_count, article_collection[${req.body.start_index ? '{start_index}' : '0' }..${req.body.start_index ? '{start_index}' : '0' }+${req.body.batch_size ? '{batch_size}' : '10' }] as article_batch
+      UNWIND article_batch AS article
 
       // Return only articles, tags are sent with a different call
-      RETURN article
+      RETURN article, article_count
       `, {
         current_user_id: return_user_id(res),
         author_id: req.body.author_id,
@@ -109,91 +112,57 @@ app.post('/get_articles', identification_middleware.middleware, (req, res) => {
 
 })
 
-app.post('/get_article_count', identification_middleware.middleware, (req, res) => {
-  // Route to get multiple articles
 
+app.get('/article', identification_middleware.middleware, (req, res) => {
+  // Route to get a single article using its ID
 
-    var session = driver.session()
-    session
-    .run(`
-      // Get all articles
-      MATCH (article:Article)-[:WRITTEN_BY]->(author:User)
+  var session = driver.session()
+  session
+  .run(`
+    MATCH (article:Article)
+    WHERE id(article) = toInt({article_id})
 
-      // Show only published articles or articles written by user
-      WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
+    // Show only published articles or articles written by user
+    WITH article
+    MATCH (article)-[:WRITTEN_BY]->(author:User)
+    WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
-      // Using search bar to find matching titles
-      ${req.body.search ? 'WITH article WHERE toLower(article.title) CONTAINS toLower({search})' : ''}
-
-      // Filter by tags if provided
-      ${req.body.tag_id ? 'WITH article MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
-
-      // Return only articles, tags are sent with a different call
-      RETURN count(article)
-      `, {
-        current_user_id: return_user_id(res),
-        tag_id: req.body.tag_id,
-        start_index: req.body.start_index,
-        search: req.body.search,
-        batch_size: req.body.batch_size,
-      })
-    .then(result => { res.send(result.records) })
-    .catch(error => { res.status(500).send(`Error getting articles: ${error}`) })
-    .finally(() => { session.close() })
-
+    RETURN article
+    `, {
+    current_user_id: return_user_id(res),
+    article_id: req.query.id
+  })
+  .then(result => { res.send(result.records) })
+  .catch(error => { res.status(500).send(`Error getting article: ${error}`) })
+  .finally(() => { session.close() })
 
 })
 
-app.post('/get_article', identification_middleware.middleware, (req, res) => {
-  // Route to get a single article
-
-    var session = driver.session()
-    session
-    .run(`
-      MATCH (article:Article)
-      WHERE id(article) = toInt({article_id})
-
-      // Show only published articles or articles written by user
-      WITH article
-      MATCH (article)-[:WRITTEN_BY]->(author:User)
-      WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
-
-      RETURN article
-      `, {
-      current_user_id: return_user_id(res),
-      article_id: req.body.article_id
-    })
-    .then(result => { res.send(result.records) })
-    .catch(error => { res.status(500).send(`Error getting article: ${error}`) })
-    .finally(() => { session.close() })
-
-})
-
-app.post('/get_tags_of_article', identification_middleware.middleware,  (req, res) => {
+app.get('/tags_of_article', identification_middleware.middleware,  (req, res) => {
   // Route to get tags of a given article
 
-    var session = driver.session()
-    session
-    .run(`
-      MATCH (tag:Tag)-[:APPLIED_TO]->(article:Article)
-      WHERE id(article) = toInt({article_id})
+  var session = driver.session()
+  session
+  .run(`
+    MATCH (tag:Tag)-[:APPLIED_TO]->(article:Article)
+    WHERE id(article) = toInt({article_id})
 
-      // NOT SURE IF FILTERING WORKS
-      WITH tag, article
-      MATCH (article)-[:WRITTEN_BY]->(author:User)
-      WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
+    // NOT SURE IF FILTERING WORKS
+    WITH tag, article
+    MATCH (article)-[:WRITTEN_BY]->(author:User)
+    WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
-      RETURN tag
-      `, {
-        current_user_id: return_user_id(res),
-        article_id: req.body.article_id
-      })
-    .then(result => { res.send(result.records) })
-    .catch(error => { res.status(500).send(`Error getting tags: ${error}`) })
-    .finally(() => { session.close() })
+    RETURN tag
+    `, {
+      current_user_id: return_user_id(res),
+      article_id: req.query.id
+    })
+  .then(result => { res.send(result.records) })
+  .catch(error => { res.status(500).send(`Error getting tags: ${error}`) })
+  .finally(() => { session.close() })
 })
 
-app.post('/get_author_of_article', identification_middleware.middleware, (req, res) => {
+app.get('/author_of_article', identification_middleware.middleware, (req, res) => {
   // Route to get author of a given article
 
 
@@ -210,7 +179,7 @@ app.post('/get_author_of_article', identification_middleware.middleware, (req, r
       RETURN author
       `, {
         current_user_id: return_user_id(res),
-        article_id: req.body.article_id
+        article_id: req.query.id
       })
     .then(result => { res.send(result.records) })
     .catch(error => { res.status(500).send(`Error getting author: ${error}`) })
@@ -297,7 +266,7 @@ app.post('/update_article', authentication_middleware.middleware, (req, res) => 
   .run(`
     // Find the article node and update it
     MATCH (article:Article)-[:WRITTEN_BY]->(author:User)
-    WHERE id(article) = toInt({article}.identity.low) AND WHERE id(author)=toInt({author_id})
+    WHERE id(article) = toInt({article}.identity.low) AND id(author)=toInt({author_id})
 
     // Remove previously set properties
     REMOVE article.thumbnail_src
@@ -399,10 +368,27 @@ app.post('/get_tag', (req, res) => {
     `, {
     tag_id: req.body.tag_id,
   })
-  .then(result => { res.send(result.records) })
+  .then(result => { res.send(result.records[0].get('tag')) })
   .catch(error => { res.status(500).send(`Error getting tag: ${error}`) })
   .finally(() => { session.close() })
 })
+
+app.post('/get_author', (req, res) => {
+  // Route to get an author using his ID
+  var session = driver.session()
+  session
+  .run(`
+    MATCH (author:User)
+    WHERE id(author) = toInt({author_id})
+    RETURN author
+    `, {
+    author_id: req.body.author_id,
+  })
+  .then(result => { res.send(result.records[0].get('author')) })
+  .catch(error => { res.status(500).send(`Error getting author: ${error}`) })
+  .finally( () => { session.close() })
+})
+
 
 app.post('/get_tag_list', (req, res) => {
   // Route to get all tags
@@ -526,28 +512,26 @@ app.post('/delete_comment', authentication_middleware.middleware, (req, res) => 
   .finally(() => { session.close() })
 })
 
-app.post('/get_comments_of_article', identification_middleware.middleware, (req, res) => {
+app.get('/comments_of_article', identification_middleware.middleware, (req, res) => {
   // Route to get comments of a given article
+  var session = driver.session()
+  session
+  .run(`
+    MATCH (comment:Comment)-[:ABOUT]->(article:Article)
+    WHERE id(article) = toInt({article_id})
 
+    WITH comment, article
+    MATCH (article)-[:WRITTEN_BY]->(author:User)
+    WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
-    var session = driver.session()
-    session
-    .run(`
-      MATCH (comment:Comment)-[:ABOUT]->(article:Article)
-      WHERE id(article) = toInt({article_id})
-
-      WITH comment, article
-      MATCH (article)-[:WRITTEN_BY]->(author:User)
-      WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
-
-      RETURN comment
-      `, {
-        current_user_id: return_user_id(res),
-        article_id: req.body.article_id,
-      })
-    .then(result => { res.send(result.records) })
-    .catch(error => { res.status(500).send(`Error getting comments: ${error}`) })
-    .finally(() => { session.close() })
+    RETURN comment
+    `, {
+      current_user_id: return_user_id(res),
+      article_id: req.query.id,
+    })
+  .then(result => { res.send(result.records) })
+  .catch(error => { res.status(500).send(`Error getting comments: ${error}`) })
+  .finally(() => { session.close() })
 
 })
 

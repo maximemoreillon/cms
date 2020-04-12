@@ -43,9 +43,6 @@ app.use(bodyParser.json({limit: '50mb', extended: true}))
 app.use(cors())
 
 
-
-
-
 function return_user_id(res) {
   if(res.locals.user) return res.locals.user.identity.low
   else return undefined
@@ -53,12 +50,12 @@ function return_user_id(res) {
 
 
 app.get('/', (req, res) => {
-  res.send(`CMS`)
+  res.send(`CMS API, Maxime MOREILLON`)
 })
 
 
 
-app.post('/get_articles', identification_middleware.middleware, (req, res) => {
+app.get('/articles', identification_middleware.middleware, (req, res) => {
 
     // Route to get multiple articles
 
@@ -97,13 +94,13 @@ app.post('/get_articles', identification_middleware.middleware, (req, res) => {
       RETURN article, article_count
       `, {
         current_user_id: return_user_id(res),
-        author_id: req.body.author_id,
-        tag_id: req.body.tag_id,
-        start_index: req.body.start_index,
-        search: req.body.search,
-        sorting: req.body.sort,
-        order: req.body.order,
-        batch_size: req.body.batch_size,
+        author_id: req.query.author_id,
+        tag_id: req.query.tag_id,
+        start_index: req.query.start_index,
+        search: req.query.search,
+        sorting: req.query.sort,
+        order: req.query.order,
+        batch_size: req.query.batch_size,
       })
     .then(result => { res.send(result.records) })
     .catch(error => { res.status(500).send(`Error getting articles: ${error}`) })
@@ -357,7 +354,7 @@ app.post('/delete_article', authentication_middleware.middleware, (req, res) => 
 })
 
 
-app.post('/get_tag', (req, res) => {
+app.get('/tag', (req, res) => {
   // Route to get a single tag using its ID
   var session = driver.session()
   session
@@ -366,14 +363,14 @@ app.post('/get_tag', (req, res) => {
     WHERE id(tag) = toInt({tag_id})
     RETURN tag
     `, {
-    tag_id: req.body.tag_id,
+    tag_id: req.query.tag_id,
   })
   .then(result => { res.send(result.records[0].get('tag')) })
   .catch(error => { res.status(500).send(`Error getting tag: ${error}`) })
   .finally(() => { session.close() })
 })
 
-app.post('/get_author', (req, res) => {
+app.get('/author', (req, res) => {
   // Route to get an author using his ID
   var session = driver.session()
   session
@@ -382,7 +379,7 @@ app.post('/get_author', (req, res) => {
     WHERE id(author) = toInt({author_id})
     RETURN author
     `, {
-    author_id: req.body.author_id,
+    author_id: req.query.author_id,
   })
   .then(result => { res.send(result.records[0].get('author')) })
   .catch(error => { res.status(500).send(`Error getting author: ${error}`) })
@@ -390,7 +387,7 @@ app.post('/get_author', (req, res) => {
 })
 
 
-app.post('/get_tag_list', (req, res) => {
+app.get('/tag_list', (req, res) => {
   // Route to get all tags
 
   var session = driver.session()
@@ -537,7 +534,7 @@ app.get('/comments_of_article', identification_middleware.middleware, (req, res)
 
 
 
-app.post('/get_navigation_items', (req, res) => {
+app.get('/navigation_items', (req, res) => {
   // Route to get navbar items
   var session = driver.session()
   session

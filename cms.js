@@ -69,25 +69,27 @@ app.get('/articles', identification_middleware.middleware, (req, res) => {
       WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
       // Using search bar to find matching titles
-      ${req.body.search ? 'WITH article WHERE toLower(article.title) CONTAINS toLower({search})' : ''}
+      ${req.query.search ? 'WITH article WHERE toLower(article.title) CONTAINS toLower({search})' : ''}
 
       // Filter by tag if provided
-      ${req.body.tag_id ? 'WITH article MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
+      ${req.query.tag_id ? 'WITH article MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
 
       // Filter by user if provided
-      ${req.body.author_id ? 'WITH article MATCH (author:User)<-[:WRITTEN_BY]-(article) WHERE id(author) = toInt({author_id})' : ''}
+      ${req.query.author_id ? 'WITH article MATCH (author:User)<-[:WRITTEN_BY]-(article) WHERE id(author) = toInt({author_id})' : ''}
 
       // Sorting and ordering
       // THIS IS A MESS BECAUSE NEO4J DOES NOT PARSE PARAMETERS PROPERLY HERE
       WITH article
-      ORDER BY ${req.body.sort ? (req.body.sort === 'article.title' ? 'article.title' : 'article.edition_date') : 'article.edition_date'}
-      ${req.body.order ? (req.body.order === 'ASC' ? 'ASC' : 'DESC') : 'DESC'}
+      ORDER BY ${req.query.sort ? (req.query.sort === 'article.title' ? 'article.title' : 'article.edition_date') : 'article.edition_date'}
+      ${req.query.order ? (req.query.order === 'ASC' ? 'ASC' : 'DESC') : 'DESC'}
 
       // Collect everything for count
       WITH count(article) as article_count, collect(article) as article_collection
 
       // Return only articles by batch
-      WITH article_count, article_collection[${req.body.start_index ? '{start_index}' : '0' }..${req.body.start_index ? '{start_index}' : '0' }+${req.body.batch_size ? '{batch_size}' : '10' }] as article_batch
+      WITH article_count,
+      article_collection[${req.query.start_index ? 'toInt({start_index})' : '0' }..${req.query.start_index ? 'toInt({start_index})' : '0' }+${req.query.batch_size ? 'toInt({batch_size})' : '10' }]
+      AS article_batch
       UNWIND article_batch AS article
 
       // Return only articles, tags are sent with a different call
@@ -103,7 +105,9 @@ app.get('/articles', identification_middleware.middleware, (req, res) => {
         batch_size: req.query.batch_size,
       })
     .then(result => { res.send(result.records) })
-    .catch(error => { res.status(500).send(`Error getting articles: ${error}`) })
+    .catch(error => {
+      res.status(500).send(`Error getting articles: ${error}`)
+    })
     .finally(() => { session.close() })
 
 

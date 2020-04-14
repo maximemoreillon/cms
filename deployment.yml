@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: cms
-        image: 192.168.1.2:5000/cms
+        image: ${CONTAINER_REGISTRY}/cms
         ports:
         - containerPort: 8050
 ---

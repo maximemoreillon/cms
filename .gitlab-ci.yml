@@ -3,8 +3,7 @@ stages:
   - deploy
 
 variables:
-  DOCKER_IMAGE: 192.168.1.2:5000/cms
-  KUBERNETES_DEPLOYMENT: cms
+  APPLICATION_NAME: cms
 
 
 containerization:
@@ -12,13 +11,19 @@ containerization:
   script:
     - cp ${SECRETS} ./secrets.js
     - docker build -t ${DOCKER_IMAGE} .
-    - docker push ${DOCKER_IMAGE}
-    - docker image rm ${DOCKER_IMAGE}
+    - >
+      docker build
+      --build-arg HTTP_PROXY=$HTTP_PROXY
+      --build-arg HTTPS_PROXY=$HTTPS_PROXY
+      -t ${CONTAINER_REGISTRY}/${APPLICATION_NAME}
+      .
+    - docker push ${CONTAINER_REGISTRY}/${APPLICATION_NAME}
+    - docker image rm ${CONTAINER_REGISTRY}/${APPLICATION_NAME}
 
 deployment:
   stage: deploy
   script:
     - kubectl apply -f deployment.yml
-    - kubectl rollout restart deployment/${KUBERNETES_DEPLOYMENT}
+    - kubectl rollout restart deployment/${APPLICATION_NAME}
   environment:
     name: production

@@ -326,7 +326,7 @@ app.post('/delete_article', authentication_middleware.middleware, (req, res) => 
   session
   .run(`
     MATCH (article:Article)-[:WRITTEN_BY]->(author:User)
-    WHERE id(article) = toInt({article_id}) AND WHERE id(author)=toInt({author_id})
+    WHERE id(article) = toInt({article_id}) AND id(author)=toInt({author_id})
 
     // Deal with comments
     WITH article
@@ -337,8 +337,8 @@ app.post('/delete_article', authentication_middleware.middleware, (req, res) => 
     DETACH DELETE article
     RETURN 'success'
     `, {
-    article_id: req.body.article_id,
     author_id: res.locals.user.identity.low,
+    article_id: req.body.article_id,
   })
   .then(result => {
 

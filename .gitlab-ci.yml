@@ -5,7 +5,6 @@ stages:
 variables:
   APPLICATION_NAME: cms
 
-
 containerization:
   stage: containerization
   script:
@@ -22,7 +21,7 @@ containerization:
 deployment:
   stage: deploy
   script:
-    - kubectl apply -f deployment.yml
+    - envsubst < deployment.yml | kubectl apply -f -
     - kubectl rollout restart deployment/${APPLICATION_NAME}
   environment:
     name: production

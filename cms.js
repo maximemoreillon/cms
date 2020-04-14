@@ -75,11 +75,11 @@ app.get('/articles', identification_middleware.middleware, (req, res) => {
       ${req.query.tag_id ? 'WITH article MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
 
       // Filter by user if provided
-      ${req.query.author_id ? 'WITH article MATCH (author:User)<-[rel:WRITTEN_BY]-(article) WHERE id(author) = toInt({author_id})' : ''}
+      ${req.query.author_id ? 'WITH article MATCH (author:User)<-[WRITTEN_BY]-(article) WHERE id(author) = toInt({author_id})' : ''}
 
       // Sorting and ordering
       // THIS IS A MESS BECAUSE NEO4J DOES NOT PARSE PARAMETERS PROPERLY HERE
-      WITH article, rel
+      WITH article
       ORDER BY ${req.query.sort ? (req.query.sort === 'article.title' ? 'article.title' : 'article.edition_date') : 'article.edition_date'}
       ${req.query.order ? (req.query.order === 'ASC' ? 'ASC' : 'DESC') : 'DESC'}
 

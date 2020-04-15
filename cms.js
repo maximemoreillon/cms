@@ -421,13 +421,13 @@ app.post('/create_tag', authentication_middleware.middleware, (req, res) => {
   .then(result => { res.send(result.records) })
   .catch(error => { res.status(500).send(`Error creating tag: ${error}`) })
   .finally(() => { session.close() })
-
-
-
 })
+
 
 app.post('/update_tag', authentication_middleware.middleware, (req, res) => {
   // Route to update a single tag using
+
+  if(!res.locals.user.properties.isAdmin) return res.status(403).send('Only an administrator can perform this operation')
 
   var session = driver.session()
   session
@@ -442,12 +442,12 @@ app.post('/update_tag', authentication_middleware.middleware, (req, res) => {
   .then(result => { res.send(result.records) })
   .catch(error => { res.status(500).send(`Error updating tag: ${error}`) })
   .finally(() => { session.close() })
-
 })
 
 app.post('/delete_tag', authentication_middleware.middleware, (req, res) => {
   // Route to delete a single tag
-  // Todo: check if tag attached to article of user only
+
+  if(!res.locals.user.properties.isAdmin) return res.status(403).send('Only an administrator can perform this operation')
 
   var session = driver.session()
   session
@@ -461,7 +461,6 @@ app.post('/delete_tag', authentication_middleware.middleware, (req, res) => {
   .then(result => { res.send("Tag deleted successfully") })
   .catch(error => { res.status(500).send(`Error deleting tag: ${error}`) })
   .finally(() => { session.close() })
-
 })
 
 

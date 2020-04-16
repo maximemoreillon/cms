@@ -14,7 +14,6 @@ const secrets = require('./secrets');
 
 const identification_middleware = require('./identification_middleware');
 
-
 // Parameters
 const port = 8050
 

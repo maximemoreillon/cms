@@ -8,7 +8,7 @@ variables:
 containerization:
   stage: containerization
   script:
-    - cp ${SECRETS} ./secrets.js
+    - cp ${ENV} ./.env
     - >
       docker build
       --build-arg HTTP_PROXY=$HTTP_PROXY
@@ -26,4 +26,4 @@ deployment:
   environment:
     name: production
     kubernetes:
-      namespace: moreillon
+      namespace: ${KUBERNETES_NAMESPACE}

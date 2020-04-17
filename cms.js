@@ -13,7 +13,7 @@ const identification_middleware = require('./identification_middleware');
 const secrets = require('./secrets');
 
 // Parameters
-const port = 8050
+const port = 80
 
 // Configuration of middlewares
 authentication_middleware.authentication_api_url = secrets.authentication_api_url

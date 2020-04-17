@@ -26,4 +26,4 @@ deployment:
   environment:
     name: production
     kubernetes:
-      namespace: moreillon-applications
+      namespace: moreillon

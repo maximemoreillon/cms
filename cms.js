@@ -35,7 +35,6 @@ function return_user_id(res) {
   else return undefined
 }
 
-
 app.get('/', (req, res) => {
   res.send(`
     CMS API, Maxime MOREILLON <br>

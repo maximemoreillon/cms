@@ -26,12 +26,12 @@ metadata:
     run: cms
   name: cms
 spec:
+  type: NodePort
   ports:
   - port: 8050
     nodePort: 30050
   selector:
     app: cms
-  type: NodePort
 ---
 kind: Service
 apiVersion: v1

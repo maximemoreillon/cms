@@ -3,14 +3,15 @@ const path = require('path')
 const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')
-const authentication_middleware = require('@moreillon/authentication_middleware');
 const neo4j = require('neo4j-driver');
 const axios = require('axios')
+
+const authentication_middleware = require('@moreillon/authentication_middleware');
+const identification_middleware = require('./identification_middleware');
 
 // Local modules
 const secrets = require('./secrets');
 
-const identification_middleware = require('./identification_middleware');
 
 // Parameters
 const port = 8050

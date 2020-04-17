@@ -43,7 +43,7 @@ app.get('/', (req, res) => {
 })
 
 app.get('/auth_test', (req, res) => {
-  axios.post(`${secrets.authentication_api_url}/whoami`)
+  axios.post(secrets.authentication_api_url, {})
   .then( response => res.send(response.data))
   .error( error => res.send(error))
 })

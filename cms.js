@@ -39,7 +39,6 @@ app.get('/', (req, res) => {
   res.send(`CMS API, Maxime MOREILLON`)
 })
 
-
 app.get('/articles', identification_middleware.middleware, (req, res) => {
 
     // Route to get multiple articles

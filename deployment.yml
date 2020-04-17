@@ -41,13 +41,3 @@ spec:
  ports:
  - port: 7687
    targetPort: 7687
----
-kind: Endpoints
-apiVersion: v1
-metadata:
- name: neo4j
-subsets:
- - addresses:
-     - ip: 10.1.37.1
-   ports:
-     - port: 7687

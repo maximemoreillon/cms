@@ -24,6 +24,7 @@ const driver = neo4j.driver(
   neo4j.auth.basic(secrets.neo4j.username, secrets.neo4j.password)
 )
 
+
 // Express configuration
 const app = express()
 app.use(bodyParser.json({limit: '50mb', extended: true}))

@@ -19,7 +19,6 @@ const port = 8050
 authentication_middleware.authentication_api_url = secrets.authentication_api_url
 identification_middleware.authentication_api_url = secrets.authentication_api_url
 
-
 const driver = neo4j.driver(
   secrets.neo4j.url,
   neo4j.auth.basic(secrets.neo4j.username, secrets.neo4j.password)

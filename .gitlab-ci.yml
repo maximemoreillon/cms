@@ -4,26 +4,26 @@ stages:
 
 variables:
   APPLICATION_NAME: cms
+  DOCKER_IMAGE: ${CONTAINER_REGISTRY}/${APPLICATION_NAME} # CONTAINER_REGISTRY provided by GitLab
 
 containerization:
   stage: containerization
   script:
-    - cp ${ENV} ./.env
     - >
       docker build
       --build-arg HTTP_PROXY=$HTTP_PROXY
       --build-arg HTTPS_PROXY=$HTTPS_PROXY
-      -t ${CONTAINER_REGISTRY}/${APPLICATION_NAME}
+      -t ${DOCKER_IMAGE}
       .
-    - docker push ${CONTAINER_REGISTRY}/${APPLICATION_NAME}
-    - docker image rm ${CONTAINER_REGISTRY}/${APPLICATION_NAME}
+    - docker push ${DOCKER_IMAGE}
+    - docker image rm ${DOCKER_IMAGE} # Cleanup
 
 deployment:
   stage: deploy
   script:
     - envsubst < deployment.yml | kubectl apply -f -
-    - kubectl rollout restart deployment/${APPLICATION_NAME}
+    - kubectl rollout restart deployment/${APPLICATION_NAME} # Forces pulling a new image
   environment:
     name: production
     kubernetes:
-      namespace: ${KUBERNETES_NAMESPACE}
+      namespace: ${KUBERNETES_NAMESPACE} # KUBERNETES_NAMESPACE provided by GitLab

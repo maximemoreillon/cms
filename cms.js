@@ -51,6 +51,15 @@ app.get('/nginx', (req, res) => {
   .catch( (error) => { error })
 })
 
+app.get('/auth', (req, res) => {
+  axios.get('http://authentication/')
+  .then(response => {
+    res.send(response.data)
+  })
+  .catch( (error) => { error })
+})
+
+
 
 
 

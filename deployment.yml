@@ -22,8 +22,6 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  labels:
-    run: cms
   name: cms
 spec:
   type: NodePort
@@ -33,6 +31,7 @@ spec:
   selector:
     app: cms
 ---
+# Service to make Neo4J (outside cluster) accessible
 kind: Service
 apiVersion: v1
 metadata:
@@ -42,6 +41,7 @@ spec:
  - port: 7687
    targetPort: 7687
 ---
+# Endpoint for Neo4J service
 kind: Endpoints
 apiVersion: v1
 metadata:

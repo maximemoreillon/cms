@@ -42,27 +42,6 @@ app.get('/', (req, res) => {
     `)
 })
 
-
-app.get('/nginx', (req, res) => {
-  axios.get('http://my-nginx/')
-  .then(response => {
-    res.send(response.data)
-  })
-  .catch( (error) => { error })
-})
-
-app.get('/auth', (req, res) => {
-  axios.get('http://authentication/')
-  .then(response => {
-    res.send(response.data)
-  })
-  .catch( (error) => { error })
-})
-
-
-
-
-
 app.get('/articles', identification_middleware.middleware, (req, res) => {
 
     // Route to get multiple articles

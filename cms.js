@@ -36,9 +36,9 @@ function return_user_id(res) {
 
 app.get('/', (req, res) => {
   res.send(`
-    CMS API, Maxime MOREILLON <br>
-    Authentication API URL: ${secrets.authentication_api_url} <br>
-    Neo4J URL: ${secrets.neo4j.url} <br>
+    CMS API, Maxime MOREILLON<br>
+    Authentication API URL: ${secrets.authentication_api_url}<br>
+    Neo4J URL: ${secrets.neo4j.url}<br>
     `)
 })
 

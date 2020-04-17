@@ -12,7 +12,6 @@ const identification_middleware = require('./identification_middleware');
 // Local modules
 const secrets = require('./secrets');
 
-
 // Parameters
 const port = 8050
 

@@ -47,7 +47,7 @@ app.get('/auth_test', (req, res) => {
   .then(response => {
     res.send(response.data)
   })
-  .catch( (error) => {res.send(response.error) })
+  .catch( (error) => {res.send(error) })
 })
 
 app.get('/articles', identification_middleware.middleware, (req, res) => {

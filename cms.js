@@ -52,7 +52,7 @@ app.get('/nginx', (req, res) => {
 })
 
 app.get('/auth', (req, res) => {
-  axios.get('http://authentication:7088/')
+  axios.get('http://authentication/')
   .then(response => {
     res.send(response.data)
   })

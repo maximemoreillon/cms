@@ -31,7 +31,7 @@ spec:
     nodePort: 30050
   selector:
     app: cms
-  type: LoadBalancer
+  type: NodePort
 ---
 kind: Service
 apiVersion: v1

@@ -3,7 +3,6 @@ const path = require('path')
 const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')
-const MongoDB = require('mongodb')
 const authentication_middleware = require('@moreillon/authentication_middleware');
 
 const neo4j = require('neo4j-driver');
@@ -20,33 +19,21 @@ const port = 8050
 authentication_middleware.authentication_api_url = secrets.authentication_api_url
 identification_middleware.authentication_api_url = secrets.authentication_api_url
 
-// MongoDB related
-const MongoClient = MongoDB.MongoClient;
-const ObjectID = MongoDB.ObjectID;
-
-const DB_config = {
-  URL: secrets.mongodb_url,
-  DB_name: 'cms',
-  options: { useUnifiedTopology: true },
-}
-
 
 const driver = neo4j.driver(
   secrets.neo4j.url,
   neo4j.auth.basic(secrets.neo4j.username, secrets.neo4j.password)
 )
 
-// Express related
+// Express configuration
 const app = express()
 app.use(bodyParser.json({limit: '50mb', extended: true}))
 app.use(cors())
-
 
 function return_user_id(res) {
   if(res.locals.user) return res.locals.user.identity.low
   else return undefined
 }
-
 
 app.get('/', (req, res) => {
   res.send(`CMS API, Maxime MOREILLON`)

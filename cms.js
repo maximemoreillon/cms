@@ -43,8 +43,8 @@ app.get('/', (req, res) => {
 })
 
 
-app.get('/', (req, res) => {
-  axios.get('http://my-nginx')
+app.get('/nginx', (req, res) => {
+  axios.get('http://my-nginx/')
   .then(response => {
     res.send(response.data)
   })

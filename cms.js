@@ -15,6 +15,7 @@ const secrets = require('./secrets');
 // Parameters
 const port = 8050
 
+// Configuration of middlewares
 authentication_middleware.authentication_api_url = secrets.authentication_api_url
 identification_middleware.authentication_api_url = secrets.authentication_api_url
 

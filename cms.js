@@ -42,6 +42,12 @@ app.get('/', (req, res) => {
     `)
 })
 
+app.get('/auth_test', (req, res) => {
+  axios.post(`${secrets.authentication_api_url}/whoami`)
+  .then( response => res.send(response.data))
+  .error( error => res.send(error))
+})
+
 app.get('/articles', identification_middleware.middleware, (req, res) => {
 
     // Route to get multiple articles

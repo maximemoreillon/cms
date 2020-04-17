@@ -5,23 +5,28 @@ const cors = require('cors')
 const bodyParser = require('body-parser')
 const neo4j = require('neo4j-driver');
 const axios = require('axios')
+const dotenv = require('dotenv');
+
 
 const authentication_middleware = require('@moreillon/authentication_middleware');
 const identification_middleware = require('./identification_middleware');
 
-// Local modules
-const secrets = require('./secrets');
+dotenv.config();
 
 // Parameters
-const port = 80
+var port = 80
+if(process.env.APP_PORT) port=process.env.APP_PORT
 
 // Configuration of middlewares
-authentication_middleware.authentication_api_url = secrets.authentication_api_url
-identification_middleware.authentication_api_url = secrets.authentication_api_url
+authentication_middleware.authentication_api_url = `${process.env.AUTHENTIATION_API_URL}/decode_jwt`
+identification_middleware.authentication_api_url = `${process.env.AUTHENTIATION_API_URL}/decode_jwt`
 
 const driver = neo4j.driver(
-  secrets.neo4j.url,
-  neo4j.auth.basic(secrets.neo4j.username, secrets.neo4j.password)
+  process.env.NEO4J_URL,
+  neo4j.auth.basic(
+    process.env.NEO4J_USERNAME,
+    process.env.NEO4J_PASSWORD
+  )
 )
 
 // Express configuration
@@ -35,11 +40,7 @@ function return_user_id(res) {
 }
 
 app.get('/', (req, res) => {
-  res.send(`
-    CMS API, Maxime MOREILLON<br>
-    Authentication API URL: ${secrets.authentication_api_url}<br>
-    Neo4J URL: ${secrets.neo4j.url}<br>
-    `)
+  res.send(`CMS API, Maxime MOREILLON`)
 })
 
 app.get('/articles', identification_middleware.middleware, (req, res) => {

@@ -30,24 +30,3 @@ spec:
     nodePort: 30050
   selector:
     app: cms
----
-# Service to make Neo4J (outside cluster) accessible
-kind: Service
-apiVersion: v1
-metadata:
- name: neo4j
-spec:
- ports:
- - port: 7687
-   targetPort: 7687
----
-# Endpoint for Neo4J service
-kind: Endpoints
-apiVersion: v1
-metadata:
- name: neo4j
-subsets:
- - addresses:
-     - ip: 10.1.37.1
-   ports:
-     - port: 7687

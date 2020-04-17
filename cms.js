@@ -53,7 +53,6 @@ app.get('/', (req, res) => {
 })
 
 
-
 app.get('/articles', identification_middleware.middleware, (req, res) => {
 
     // Route to get multiple articles

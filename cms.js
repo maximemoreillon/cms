@@ -42,14 +42,6 @@ app.get('/', (req, res) => {
     `)
 })
 
-app.get('/auth_test', (req, res) => {
-  axios.post(secrets.authentication_api_url, {})
-  .then(response => {
-    res.send(response.data)
-  })
-  .catch( (error) => {res.send(error) })
-})
-
 app.get('/articles', identification_middleware.middleware, (req, res) => {
 
     // Route to get multiple articles

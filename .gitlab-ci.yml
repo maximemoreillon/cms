@@ -9,6 +9,7 @@ variables:
 containerization:
   stage: containerization
   script:
+    - cp ${ENV} ./.env
     - >
       docker build
       --build-arg HTTP_PROXY=$HTTP_PROXY

@@ -43,12 +43,6 @@ app.get('/', (req, res) => {
   res.send(`CMS API, Maxime MOREILLON`)
 })
 
-app.get('/auth', (req, res) => {
-  axios.get(`${process.env.AUTHENTIATION_API_URL}`)
-  .then(response => { res.send(response.data) })
-  .catch(error => { res.send(error) })
-})
-
 app.get('/articles', identification_middleware.middleware, (req, res) => {
 
     // Route to get multiple articles

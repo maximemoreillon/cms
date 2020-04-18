@@ -1,4 +1,3 @@
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,7 +14,7 @@ spec:
     spec:
       containers:
       - name: cms
-        image: ${CONTAINER_REGISTRY}/${APPLICATION_NAME} # CONTAINER_REGISTRY provided by GitLab
+        image: ${CONTAINER_REGISTRY}/${APPLICATION_NAME}:latest # CONTAINER_REGISTRY provided by GitLab
         imagePullPolicy: Always # Ensures that k8s pulls a new image on restart
         ports:
         - containerPort: 80

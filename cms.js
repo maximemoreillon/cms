@@ -40,10 +40,7 @@ function return_user_id(res) {
 }
 
 app.get('/', (req, res) => {
-  res.send(`
-    CMS API, Maxime MOREILLON<br>
-    ${process.env.NEO4J_URL}
-    `)
+  res.send(`CMS API, Maxime MOREILLON`)
 })
 
 app.get('/articles', identification_middleware.middleware, (req, res) => {

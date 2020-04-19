@@ -93,9 +93,7 @@ app.get('/articles', identification_middleware.middleware, (req, res) => {
         batch_size: req.query.batch_size,
       })
     .then(result => { res.send(result.records) })
-    .catch(error => {
-      res.status(500).send(`Error getting articles: ${error}`)
-    })
+    .catch(error => { res.status(500).send(`Error getting articles: ${error}`)})
     .finally(() => { session.close() })
 
 
@@ -225,17 +223,14 @@ app.post('/create_article', authentication_middleware.middleware, (req, res) => 
     .then(result => { res.send(result.records) })
     .catch(error => { res.status(500).send(`Error creating article: ${error}`) })
     .finally(() => { session.close() })
-
-
-
-
 })
 
 app.post('/update_article', authentication_middleware.middleware, (req, res) => {
-  // Route to delete an article
+  // Route to update an article
 
   // Conversion of date back to Neo4J object
   // Neo4J is really bad for this
+  // COULD HAVE DATES IN RELATIONSHIPS
   req.body.article.properties.creation_date = new neo4j.types.Date(
     req.body.article.properties.creation_date.year.low,
     req.body.article.properties.creation_date.month.low,
@@ -301,15 +296,9 @@ app.post('/update_article', authentication_middleware.middleware, (req, res) => 
   .catch(error => { res.status(500).send(`Error updating article: ${error}`) })
   .finally(() => { session.close() })
 
-
-
-
 })
 
-
-app.post('/delete_article', authentication_middleware.middleware, (req, res) => {
-  // Route to delete an article
-
+function delete_article(req, res){
   var session = driver.session()
   session
   .run(`
@@ -334,16 +323,11 @@ app.post('/delete_article', authentication_middleware.middleware, (req, res) => 
     res.send("Article deleted successfully")
 
   })
-  .catch(error => {
-    res.status(500).send(`Error deleting article: ${error}`)
-  })
-  .finally(() => {
-    session.close()
-  })
-
-
-
-})
+  .catch(error => { res.status(500).send(`Error deleting article: ${error}`) })
+  .finally(() => { session.close() })
+}
+app.post('/delete_article', authentication_middleware.middleware, delete_article)
+app.delete('/article', authentication_middleware.middleware, delete_article)
 
 
 app.get('/tag', (req, res) => {
@@ -483,14 +467,21 @@ app.post('/delete_comment', authentication_middleware.middleware, (req, res) => 
   var session = driver.session()
   session
   .run(`
-    // Find article node
-    MATCH (comment:Comment)-[:ABOUT]->(:Article)-[:WRITTEN_BY]->(author:User)
-    WHERE id(comment) = toInt({comment_id}) AND WHERE id(author)=toInt({author_id})
+    // Find the comment
+    MATCH (comment:Comment)
+    WHERE id(comment) = toInt({comment_id}) AND
+
+    // Match the user requesting
+    WITH comment
+    MATCH (user:User)
+    WHERE id(user)=toInt({user_id})
+      AND ( (comment)-[:ABOUT]->(:Article)-[:WRITTEN_BY]->(user:User) OR user.isAdmin )
+
     DETACH DELETE comment
     RETURN 'success'
     `, {
+    user_id: res.locals.user.identity.low,
     comment_id: req.body.comment_id,
-    author_id: res.locals.user.identity.low,
   })
   .then(result => {
     if(result.records.length === 0 ) return res.status(400).send(`Comment could not be deleted, probably due to insufficient permissions`)
@@ -535,6 +526,7 @@ app.get('/navigation_items', (req, res) => {
     `, {})
   .then(result => { res.send(result.records) })
   .catch(error => { res.status(500).send(`Error getting navigation items: ${error}`) })
+  .finally(() => { session.close() })
 })
 
 

@@ -5,7 +5,8 @@ stages:
 variables:
   APPLICATION_NAME: cms
   DOCKER_IMAGE: ${CONTAINER_REGISTRY}/${APPLICATION_NAME} # CONTAINER_REGISTRY provided by GitLab
-
+  CERTIFICATE_DOMAIN: api.cms.maximemoreillon.com
+  
 containerization:
   stage: containerization
   script:

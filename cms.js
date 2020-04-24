@@ -6,10 +6,7 @@ const bodyParser = require('body-parser')
 const neo4j = require('neo4j-driver');
 const axios = require('axios')
 const dotenv = require('dotenv');
-
-
-const authentication_middleware = require('@moreillon/authentication_middleware');
-const identification_middleware = require('./identification_middleware');
+const auth = require('@moreillon/authentication_middleware');
 
 dotenv.config();
 
@@ -17,9 +14,6 @@ dotenv.config();
 var port = 80
 if(process.env.APP_PORT) port=process.env.APP_PORT
 
-// Configuration of middlewares
-authentication_middleware.authentication_api_url = `${process.env.AUTHENTIATION_API_URL}/decode_jwt`
-identification_middleware.authentication_api_url = `${process.env.AUTHENTIATION_API_URL}/decode_jwt`
 
 const driver = neo4j.driver(
   process.env.NEO4J_URL,
@@ -43,7 +37,7 @@ app.get('/', (req, res) => {
   res.send(`CMS API, Maxime MOREILLON`)
 })
 
-app.get('/articles', identification_middleware.middleware, (req, res) => {
+app.get('/articles', auth.identify_if_possible, (req, res) => {
 
     // Route to get multiple articles
 
@@ -100,7 +94,7 @@ app.get('/articles', identification_middleware.middleware, (req, res) => {
 })
 
 
-app.get('/article', identification_middleware.middleware, (req, res) => {
+app.get('/article', auth.identify_if_possible, (req, res) => {
   // Route to get a single article using its ID
 
   var session = driver.session()
@@ -125,7 +119,7 @@ app.get('/article', identification_middleware.middleware, (req, res) => {
 
 })
 
-app.get('/tags_of_article', identification_middleware.middleware,  (req, res) => {
+app.get('/tags_of_article', auth.identify_if_possible,  (req, res) => {
   // Route to get tags of a given article
 
   var session = driver.session()
@@ -149,7 +143,7 @@ app.get('/tags_of_article', identification_middleware.middleware,  (req, res) =>
   .finally(() => { session.close() })
 })
 
-app.get('/author_of_article', identification_middleware.middleware, (req, res) => {
+app.get('/author_of_article', auth.identify_if_possible, (req, res) => {
   // Route to get author of a given article
 
 
@@ -174,7 +168,7 @@ app.get('/author_of_article', identification_middleware.middleware, (req, res) =
 
 })
 
-app.post('/create_article', authentication_middleware.middleware, (req, res) => {
+app.post('/create_article', auth.authenticate, (req, res) => {
   // Route to create an article
   // TODO: Check if there is a way to combine with update route using MERGE
 
@@ -225,7 +219,7 @@ app.post('/create_article', authentication_middleware.middleware, (req, res) => 
     .finally(() => { session.close() })
 })
 
-app.post('/update_article', authentication_middleware.middleware, (req, res) => {
+app.post('/update_article', auth.authenticate, (req, res) => {
   // Route to update an article
 
   // Conversion of date back to Neo4J object
@@ -326,8 +320,8 @@ function delete_article(req, res){
   .catch(error => { res.status(500).send(`Error deleting article: ${error}`) })
   .finally(() => { session.close() })
 }
-app.post('/delete_article', authentication_middleware.middleware, delete_article)
-app.delete('/article', authentication_middleware.middleware, delete_article)
+app.post('/delete_article', auth.authenticate, delete_article)
+app.delete('/article', auth.authenticate, delete_article)
 
 
 app.get('/tag', (req, res) => {
@@ -379,7 +373,7 @@ app.get('/tag_list', (req, res) => {
 
 
 
-app.post('/create_tag', authentication_middleware.middleware, (req, res) => {
+app.post('/create_tag', auth.authenticate, (req, res) => {
   // Route to create a single tag
 
   var session = driver.session()
@@ -396,7 +390,7 @@ app.post('/create_tag', authentication_middleware.middleware, (req, res) => {
 })
 
 
-app.post('/update_tag', authentication_middleware.middleware, (req, res) => {
+app.post('/update_tag', auth.authenticate, (req, res) => {
   // Route to update a single tag using
 
   if(!res.locals.user.properties.isAdmin) return res.status(403).send('Only an administrator can perform this operation')
@@ -416,7 +410,7 @@ app.post('/update_tag', authentication_middleware.middleware, (req, res) => {
   .finally(() => { session.close() })
 })
 
-app.post('/delete_tag', authentication_middleware.middleware, (req, res) => {
+app.post('/delete_tag', auth.authenticate, (req, res) => {
   // Route to delete a single tag
 
   if(!res.locals.user.properties.isAdmin) return res.status(403).send('Only an administrator can perform this operation')
@@ -462,7 +456,7 @@ app.post('/create_comment', (req, res) => {
   .finally(() => { session.close() })
 })
 
-app.post('/delete_comment', authentication_middleware.middleware, (req, res) => {
+app.post('/delete_comment', auth.authenticate, (req, res) => {
   // Route to delete a comment
   var session = driver.session()
   session
@@ -491,7 +485,7 @@ app.post('/delete_comment', authentication_middleware.middleware, (req, res) => 
   .finally(() => { session.close() })
 })
 
-app.get('/comments_of_article', identification_middleware.middleware, (req, res) => {
+app.get('/comments_of_article', auth.identify_if_possible, (req, res) => {
   // Route to get comments of a given article
   var session = driver.session()
   session

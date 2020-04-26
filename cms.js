@@ -463,13 +463,14 @@ app.post('/delete_comment', auth.authenticate, (req, res) => {
   .run(`
     // Find the comment
     MATCH (comment:Comment)
-    WHERE id(comment) = toInt({comment_id}) AND
+    WHERE id(comment) = toInt({comment_id})
 
     // Match the user requesting
     WITH comment
     MATCH (user:User)
     WHERE id(user)=toInt({user_id})
-      AND ( (comment)-[:ABOUT]->(:Article)-[:WRITTEN_BY]->(user:User) OR user.isAdmin )
+      AND ( (comment)-[:ABOUT]->(:Article)-[:WRITTEN_BY]->(user:User)
+        OR user.isAdmin )
 
     DETACH DELETE comment
     RETURN 'success'
@@ -481,7 +482,10 @@ app.post('/delete_comment', auth.authenticate, (req, res) => {
     if(result.records.length === 0 ) return res.status(400).send(`Comment could not be deleted, probably due to insufficient permissions`)
     res.send("Comment deleted successfully")
   })
-  .catch(error => { res.status(500).send(`Error deleting tag: ${error}`) })
+  .catch(error => {
+    console.log(error)
+    res.status(500).send(`Error deleting comment: ${error}`)
+  })
   .finally(() => { session.close() })
 })
 

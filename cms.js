@@ -51,18 +51,23 @@ app.get('/articles', auth.identify_if_possible, (req, res) => {
       WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
       // Using search bar to find matching titles
-      ${req.query.search ? 'WITH article WHERE toLower(article.title) CONTAINS toLower({search})' : ''}
+      WITH article
+      ${req.query.search ? 'WHERE toLower(article.title) CONTAINS toLower({search})' : ''}
 
       // Filter by tag if provided
-      ${req.query.tag_id ? 'WITH article MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
+      WITH article
+      ${req.query.tag_id ? 'MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
 
       // Filter by user if provided
-      ${req.query.author_id ? 'WITH article MATCH (author:User)<-[WRITTEN_BY]-(article) WHERE id(author) = toInt({author_id})' : ''}
+      WITH article
+      ${req.query.author_id ? 'MATCH (author:User)<-[WRITTEN_BY]-(article) WHERE id(author) = toInt({author_id})' : ''}
 
       // Sorting and ordering
       // THIS IS A MESS BECAUSE NEO4J DOES NOT PARSE PARAMETERS PROPERLY HERE
       WITH article
-      ORDER BY ${req.query.sort ? (req.query.sort === 'article.title' ? 'article.title' : 'article.edition_date') : 'article.edition_date'}
+      MATCH (article)-[relationship:WRITTEN_BY]->(:User)
+      WITH article, relationship
+      ORDER BY ${req.query.sort ? (req.query.sort === 'article.title' ? 'article.title' : 'relationship.edition_date') : 'relationship.edition_date'}
       ${req.query.order ? (req.query.order === 'ASC' ? 'ASC' : 'DESC') : 'DESC'}
 
       // Collect everything for count
@@ -74,8 +79,12 @@ app.get('/articles', auth.identify_if_possible, (req, res) => {
       AS article_batch
       UNWIND article_batch AS article
 
-      // Return only articles, tags are sent with a different call
-      RETURN article, article_count
+      // Get the author and its relationship to author
+      WITH article, article_count
+      MATCH (article)-[relationship:WRITTEN_BY]->(author:User)
+
+      // Return articles, tags are sent with a different call
+      RETURN article, article_count, author, relationship
       `, {
         current_user_id: return_user_id(res),
         author_id: req.query.author_id,
@@ -87,7 +96,10 @@ app.get('/articles', auth.identify_if_possible, (req, res) => {
         batch_size: req.query.batch_size,
       })
     .then(result => { res.send(result.records) })
-    .catch(error => { res.status(500).send(`Error getting articles: ${error}`)})
+    .catch(error => {
+      console.log(error)
+      res.status(500).send(`Error getting articles: ${error}`)
+    })
     .finally(() => { session.close() })
 
 
@@ -105,10 +117,10 @@ app.get('/article', auth.identify_if_possible, (req, res) => {
 
     // Show only published articles or articles written by user
     WITH article
-    MATCH (article)-[:WRITTEN_BY]->(author:User)
+    MATCH (article)-[relationship:WRITTEN_BY]->(author:User)
     WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
-    RETURN article
+    RETURN article, author, relationship
     `, {
     current_user_id: return_user_id(res),
     article_id: req.query.id
@@ -181,15 +193,15 @@ app.post('/create_article', auth.authenticate, (req, res) => {
       // Set properties
       SET article = {article}.properties
 
-      // Add dates
-      SET article.creation_date = date()
-      SET article.edition_date = date()
-
       // Add relationship to author
       WITH article
       MATCH (author:User)
       WHERE id(author)=toInt({author_id})
-      MERGE (article)-[:WRITTEN_BY]->(author)
+      MERGE (article)-[rel:WRITTEN_BY]->(author)
+
+      // Save dates in the relationship
+      SET rel.creation_date = date()
+      SET rel.edition_date = date()
 
       // Deal with tags EMPTY LISTS ARE A PAIN
       WITH article
@@ -221,29 +233,11 @@ app.post('/create_article', auth.authenticate, (req, res) => {
 
 app.post('/update_article', auth.authenticate, (req, res) => {
   // Route to update an article
-
-  // Conversion of date back to Neo4J object
-  // Neo4J is really bad for this
-  // COULD HAVE DATES IN RELATIONSHIPS
-  req.body.article.properties.creation_date = new neo4j.types.Date(
-    req.body.article.properties.creation_date.year.low,
-    req.body.article.properties.creation_date.month.low,
-    req.body.article.properties.creation_date.day.low
-  )
-
-  if('edition_date' in req.body.article.properties){
-    req.body.article.properties.edition_date = new neo4j.types.Date(
-      req.body.article.properties.edition_date.year.low,
-      req.body.article.properties.edition_date.month.low,
-      req.body.article.properties.edition_date.day.low
-    )
-  }
-
   var session = driver.session()
   session
   .run(`
     // Find the article node and update it
-    MATCH (article:Article)-[:WRITTEN_BY]->(author:User)
+    MATCH (article:Article)-[rel:WRITTEN_BY]->(author:User)
     WHERE id(article) = toInt({article}.identity.low) AND id(author)=toInt({author_id})
 
     // Remove previously set properties
@@ -254,8 +248,8 @@ app.post('/update_article', auth.authenticate, (req, res) => {
     // Set the new properties
     SET article = {article}.properties
 
-    // Set the date
-    SET article.edition_date = date()
+    // Update the edition date
+    SET rel.edition_date = date()
 
     // Delete all relationships to tags so as to recreate the necessary ones
     WITH article
@@ -439,7 +433,6 @@ app.post('/create_comment', (req, res) => {
     // Find article node
     MATCH (article:Article)
     WHERE id(article) = toInt({article_id})
-    SET article.creation_date = date()
 
     // Create comment
     CREATE (comment:Comment)-[:ABOUT]->(article)

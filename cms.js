@@ -158,25 +158,24 @@ app.get('/tags_of_article', auth.identify_if_possible,  (req, res) => {
 app.get('/author_of_article', auth.identify_if_possible, (req, res) => {
   // Route to get author of a given article
 
+  var session = driver.session()
+  session
+  .run(`
+    MATCH (author:User)<-[:WRITTEN_BY]-(article:Article)
+    WHERE id(article) = toInt({article_id})
 
-    var session = driver.session()
-    session
-    .run(`
-      MATCH (author:User)<-[:WRITTEN_BY]-(article:Article)
-      WHERE id(article) = toInt({article_id})
+    // NOT SURE IF FILTERING WORKS
+    WITH author, article
+    WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
-      // NOT SURE IF FILTERING WORKS
-      WITH author, article
-      WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
-
-      RETURN author
-      `, {
-        current_user_id: return_user_id(res),
-        article_id: req.query.id
-      })
-    .then(result => { res.send(result.records) })
-    .catch(error => { res.status(500).send(`Error getting author: ${error}`) })
-    .finally(() => { session.close() })
+    RETURN author
+    `, {
+      current_user_id: return_user_id(res),
+      article_id: req.query.id
+    })
+  .then(result => { res.send(result.records) })
+  .catch(error => { res.status(500).send(`Error getting author: ${error}`) })
+  .finally(() => { session.close() })
 
 })
 

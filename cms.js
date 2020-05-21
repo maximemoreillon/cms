@@ -23,6 +23,9 @@ const driver = neo4j.driver(
   )
 )
 
+auth.authentication_api_url = process.env.AUTHENTICATION_API_URL
+auth.authentication_api_endpoint = '/decode_jwt'
+
 // Express configuration
 const app = express()
 app.use(bodyParser.json({limit: '50mb', extended: true}))

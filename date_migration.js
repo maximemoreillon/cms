@@ -18,9 +18,14 @@ session
 .run(`
   // Get all articles
   MATCH (article:Article)-[rel:WRITTEN_BY]->(author:User)
+  WHERE EXISTS(article.creation_date)
+    AND EXISTS(article.edition_date)
 
   SET rel.creation_date = article.creation_date
   SET rel.edition_date = article.edition_date
+
+  REMOVE article.creation_date
+  REMOVE article.edition_date
 
   RETURN article
   `, {})

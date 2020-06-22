@@ -13,11 +13,11 @@ containerization:
     # Docker hub login
     - echo "${DOCKER_HUB_PASSWORD}" | docker login --username ${DOCKER_HUB_USERNAME} --password-stdin
     # Building the container image
-    - docker build -t ${CONTAINER_REGISTRY}/${APPLICATION_NAME} .
+    - docker build -t ${DOCKER_IMAGE} .
     # Pushing the image to the registry
-    - docker push ${CONTAINER_REGISTRY}/${APPLICATION_NAME}
+    - docker push ${DOCKER_IMAGE}
     # Cleanup
-    - docker image rm ${CONTAINER_REGISTRY}/${APPLICATION_NAME}
+    - docker image rm ${DOCKER_IMAGE}
 
 deployment:
   stage: deploy

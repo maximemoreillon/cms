@@ -8,10 +8,9 @@ const dotenv = require('dotenv')
 
 const auth = require('@moreillon/authentication_middleware')
 
-
-const article_management = require('./article_management.js')
-const tag_management = require('./tag_management.js')
-const comment_management = require('./comment_management.js')
+const article_management = require('./routes/article_management.js')
+const tag_management = require('./routes/tag_management.js')
+const comment_management = require('./routes/comment_management.js')
 
 dotenv.config();
 

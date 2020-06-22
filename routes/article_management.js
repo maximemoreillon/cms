@@ -1,8 +1,8 @@
 const express = require('express')
 const auth = require('@moreillon/authentication_middleware')
 
-const driver = require('./db_config.js')
-const return_user_id = require('./identification.js')
+const driver = require('../db_config.js')
+const return_user_id = require('../identification.js')
 
 var router = express.Router()
 

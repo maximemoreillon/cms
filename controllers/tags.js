@@ -1,13 +1,13 @@
-const express = require('express')
-const auth = require('@moreillon/authentication_middleware')
-
 const driver = require('../db_config.js')
 const return_user_id = require('../identification.js')
 
-var router = express.Router()
-
-let get_tag = (req, res) => {
+exports.get_tag = (req, res) => {
   // Route to get a single tag using its ID
+
+  let tag_id = req.params.tag_id
+    || req.query.tad_id
+    || req.query.id
+
   var session = driver.session()
   session
   .run(`
@@ -15,14 +15,14 @@ let get_tag = (req, res) => {
     WHERE id(tag) = toInt({tag_id})
     RETURN tag
     `, {
-    tag_id: req.query.tag_id,
+    tag_id: tag_id,
   })
   .then(result => { res.send(result.records[0].get('tag')) })
   .catch(error => { res.status(500).send(`Error getting tag: ${error}`) })
   .finally(() => { session.close() })
 }
 
-let create_tag = (req, res) => {
+exports.create_tag = (req, res) => {
   // Route to create a single tag
 
   var session = driver.session()
@@ -38,8 +38,12 @@ let create_tag = (req, res) => {
   .finally(() => { session.close() })
 }
 
-let update_tag = (req, res) => {
+exports.update_tag = (req, res) => {
   // Route to update a single tag using
+
+  let tag_id = req.params.tag_id
+    || req.body.tad_id
+    || req.body.id
 
   if(!res.locals.user.properties.isAdmin) return res.status(403).send('Only an administrator can perform this operation')
 
@@ -48,20 +52,25 @@ let update_tag = (req, res) => {
   .run(`
     MATCH (tag:Tag)
     WHERE id(tag) = toInt({tag}.identity.low)
-    SET tag = {tag}.properties
+    SET tag = {propoerties}
     RETURN tag
     `, {
-    tag: req.body.tag,
+      tag_id: tag_id,
+      propoerties: req.body.propoerties,
   })
   .then(result => { res.send(result.records) })
   .catch(error => { res.status(500).send(`Error updating tag: ${error}`) })
   .finally(() => { session.close() })
 }
 
-let delete_tag = (req, res) => {
+exports.delete_tag = (req, res) => {
   // Route to delete a single tag
 
   if(!res.locals.user.properties.isAdmin) return res.status(403).send('Only an administrator can perform this operation')
+
+  let tag_id = req.params.tag_id
+    || req.query.tad_id
+    || req.query.id
 
   var session = driver.session()
   session
@@ -80,7 +89,7 @@ let delete_tag = (req, res) => {
   .finally(() => { session.close() })
 }
 
-let get_tag_list = (req, res) => {
+exports.get_tag_list = (req, res) => {
   // Route to get all tags
 
   var session = driver.session()
@@ -94,7 +103,7 @@ let get_tag_list = (req, res) => {
   .finally(() => { session.close() })
 }
 
-let get_pinned_tags = (req, res) => {
+exports.get_pinned_tags = (req, res) => {
   // Route to get navbar items
   var session = driver.session()
   session
@@ -103,20 +112,36 @@ let get_pinned_tags = (req, res) => {
     RETURN tag
     `, {})
   .then(result => { res.send(result.records) })
-  .catch(error => { res.status(500).send(`Error getting navigation items: ${error}`) })
+  .catch(error => {
+    console.log(error)
+    res.status(500).send(`Error getting navigation items: ${error}`)
+  })
   .finally(() => { session.close() })
 }
 
-router.route('/')
-  .get(get_tag)
-  .post(auth.authenticate, create_tag)
-  .put(auth.authenticate, update_tag)
-  .delete(auth.authenticate, delete_tag)
+exports.get_article_tags = (req, res) => {
+  // Route to get tags of a given article
 
-router.route('/list')
-  .get(get_tag_list)
+  let article_id = req.query.id
+    || req.params.article_id
 
-router.route('/pinned')
-  .get(get_pinned_tags)
+  var session = driver.session()
+  session
+  .run(`
+    MATCH (tag:Tag)-[:APPLIED_TO]->(article:Article)
+    WHERE id(article) = toInt({article_id})
 
-module.exports = router
+    // NOT SURE IF FILTERING WORKS
+    WITH tag, article
+    MATCH (article)-[:WRITTEN_BY]->(author:User)
+    WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
+
+    RETURN tag
+    `, {
+      current_user_id: return_user_id(res),
+      article_id: article_id
+    })
+  .then(result => { res.send(result.records) })
+  .catch(error => { res.status(500).send(`Error getting tags: ${error}`) })
+  .finally(() => { session.close() })
+}

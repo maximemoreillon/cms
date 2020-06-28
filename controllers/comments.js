@@ -1,12 +1,7 @@
-const express = require('express')
-const auth = require('@moreillon/authentication_middleware')
-
 const driver = require('../db_config.js')
 const return_user_id = require('../identification.js')
 
-var router = express.Router()
-
-let create_comment = (req, res) => {
+exports.create_comment = (req, res) => {
   // Route to create a comment
   // TODO: Prevent commenting on unpublished articles
   var session = driver.session()
@@ -31,7 +26,7 @@ let create_comment = (req, res) => {
   .finally(() => { session.close() })
 }
 
-let delete_comment = (req, res) => {
+exports.delete_comment = (req, res) => {
   // Route to delete a comment
   var session = driver.session()
   session
@@ -64,9 +59,29 @@ let delete_comment = (req, res) => {
   .finally(() => { session.close() })
 }
 
+exports.get_article_comments = (req, res) => {
+  // Route to get comments of a given article
 
-router.route('/')
-  .post(create_comment)
-  .delete(auth.authenticate, delete_comment)
+  let article_id = req.query.id
+    || req.params.article_id
 
-module.exports = router
+  var session = driver.session()
+  session
+  .run(`
+    MATCH (comment:Comment)-[:ABOUT]->(article:Article)
+    WHERE id(article) = toInt({article_id})
+
+    WITH comment, article
+    MATCH (article)-[:WRITTEN_BY]->(author:User)
+    WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
+
+    RETURN comment
+    `, {
+      current_user_id: return_user_id(res),
+      article_id: article_id,
+    })
+  .then(result => { res.send(result.records) })
+  .catch(error => { res.status(500).send(`Error getting comments: ${error}`) })
+  .finally(() => { session.close() })
+
+}

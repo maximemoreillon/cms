@@ -1,15 +1,12 @@
-const express = require('express')
-const auth = require('@moreillon/authentication_middleware')
-
 const driver = require('../db_config.js')
 const return_user_id = require('../identification.js')
 
-var router = express.Router()
-
-
-
-let get_article = (req, res) => {
+exports.get_article = (req, res) => {
   // Route to get a single article using its ID
+
+  let article_id = req.query.id
+    || req.query.article_id
+    || req.params.article_id
 
   var session = driver.session()
   session
@@ -25,7 +22,7 @@ let get_article = (req, res) => {
     RETURN article, author, relationship
     `, {
     current_user_id: return_user_id(res),
-    article_id: req.query.id
+    article_id: article_id,
   })
   .then(result => { res.send(result.records) })
   .catch(error => { res.status(500).send(`Error getting article: ${error}`) })
@@ -35,7 +32,7 @@ let get_article = (req, res) => {
 
 
 
-let create_article = (req, res) => {
+exports.create_article = (req, res) => {
   // Route to create an article
 
   var session = driver.session()
@@ -76,23 +73,32 @@ let create_article = (req, res) => {
     RETURN article
 
     `, {
-    article: req.body.article,
-    tag_ids: req.body.tag_ids,
-    author_id: res.locals.user.identity.low,
+      author_id: res.locals.user.identity.low,
+      article: req.body.article,
+      tag_ids: req.body.tag_ids,
   })
   .then(result => { res.send(result.records) })
   .catch(error => { res.status(500).send(`Error creating article: ${error}`) })
   .finally(() => { session.close() })
 }
 
-let update_article = (req, res) => {
+exports.update_article = (req, res) => {
   // Route to update an article
+
+  // TODO: consider send article properties separately from article_id
+
+  let article_id = req.params.article_id
+    || req.body.article_id
+    || req.body.article.identity.low
+
+
   var session = driver.session()
   session
   .run(`
     // Find the article node and update it
     MATCH (article:Article)-[rel:WRITTEN_BY]->(author:User)
-    WHERE id(article) = toInt({article}.identity.low) AND id(author)=toInt({author_id})
+    WHERE id(article) = toInt({article_id})
+      AND id(author)=toInt({author_id})
 
     // Remove previously set properties
     REMOVE article.thumbnail_src
@@ -100,7 +106,7 @@ let update_article = (req, res) => {
     REMOVE article.title
 
     // Set the new properties
-    SET article = {article}.properties
+    SET article = {article_properties}
 
     // Update the edition date
     SET rel.edition_date = date()
@@ -128,9 +134,10 @@ let update_article = (req, res) => {
     // Return the article
     RETURN article
     `, {
-    article: req.body.article,
-    tag_ids: req.body.tag_ids,
-    author_id: res.locals.user.identity.low,
+      article_id: article_id,
+      article_properties: req.body.article_properties || req.body.properties || req.body.article.properties,
+      tag_ids: req.body.tag_ids,
+      author_id: res.locals.user.identity.low,
   })
   .then(result => {
     if(result.records.length === 0 ) return res.status(400).send(`Article could not be updated, probably due to insufficient permissions`)
@@ -140,7 +147,12 @@ let update_article = (req, res) => {
 
 }
 
-let delete_article = (req, res) => {
+exports.delete_article = (req, res) => {
+
+  let article_id = req.query.article_id
+    || req.query.id
+    || req.params.article_id
+
   var session = driver.session()
   session
   .run(`
@@ -157,7 +169,7 @@ let delete_article = (req, res) => {
     RETURN 'success'
     `, {
     author_id: res.locals.user.identity.low,
-    article_id: req.query.article_id,
+    article_id: article_id,
   })
   .then(result => {
 
@@ -170,9 +182,11 @@ let delete_article = (req, res) => {
 }
 
 
-let get_article_list = (req, res) => {
+exports.get_article_list = (req, res) => {
 
     // Route to get multiple articles
+
+    // TODO: CHECK FOR INJECTION RISK
 
     var session = driver.session()
     session
@@ -235,94 +249,3 @@ let get_article_list = (req, res) => {
     })
     .finally(() => { session.close() })
 }
-
-let get_article_author = (req, res) => {
-  // Route to get author of a given article
-
-  var session = driver.session()
-  session
-  .run(`
-    MATCH (author:User)<-[:WRITTEN_BY]-(article:Article)
-    WHERE id(article) = toInt({article_id})
-
-    // NOT SURE IF FILTERING WORKS
-    WITH author, article
-    WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
-
-    RETURN author
-    `, {
-      current_user_id: return_user_id(res),
-      article_id: req.query.id
-    })
-  .then(result => { res.send(result.records) })
-  .catch(error => { res.status(500).send(`Error getting author: ${error}`) })
-  .finally(() => { session.close() })
-
-}
-
-let get_article_tags = (req, res) => {
-  // Route to get tags of a given article
-
-  var session = driver.session()
-  session
-  .run(`
-    MATCH (tag:Tag)-[:APPLIED_TO]->(article:Article)
-    WHERE id(article) = toInt({article_id})
-
-    // NOT SURE IF FILTERING WORKS
-    WITH tag, article
-    MATCH (article)-[:WRITTEN_BY]->(author:User)
-    WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
-
-    RETURN tag
-    `, {
-      current_user_id: return_user_id(res),
-      article_id: req.query.id
-    })
-  .then(result => { res.send(result.records) })
-  .catch(error => { res.status(500).send(`Error getting tags: ${error}`) })
-  .finally(() => { session.close() })
-}
-
-let get_article_comments = (req, res) => {
-  // Route to get comments of a given article
-  var session = driver.session()
-  session
-  .run(`
-    MATCH (comment:Comment)-[:ABOUT]->(article:Article)
-    WHERE id(article) = toInt({article_id})
-
-    WITH comment, article
-    MATCH (article)-[:WRITTEN_BY]->(author:User)
-    WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
-
-    RETURN comment
-    `, {
-      current_user_id: return_user_id(res),
-      article_id: req.query.id,
-    })
-  .then(result => { res.send(result.records) })
-  .catch(error => { res.status(500).send(`Error getting comments: ${error}`) })
-  .finally(() => { session.close() })
-
-}
-
-router.route('/')
-  .get(auth.identify_if_possible, get_article)
-  .post(auth.authenticate, create_article)
-  .put(auth.authenticate, update_article)
-  .delete(auth.authenticate, delete_article)
-
-router.route('/tags')
-  .get(auth.identify_if_possible, get_article_tags)
-
-router.route('/author')
-  .get(auth.identify_if_possible, get_article_author)
-
-router.route('/comments')
-  .get(auth.identify_if_possible, get_article_comments)
-
-router.route('/list')
-  .get(auth.identify_if_possible, get_article_list)
-
-module.exports = router

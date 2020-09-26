@@ -12,13 +12,13 @@ exports.get_article = (req, res) => {
   session
   .run(`
     MATCH (article:Article)
-    WHERE id(article) = toInt({article_id})
+    WHERE id(article) = toInt($article_id)
 
     // Show only published articles or articles written by user
     WITH article
     MATCH (article)-[relationship:WRITTEN_BY]->(author:User)
     WHERE article.published = true
-      ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
+      ${res.locals.user ? 'OR id(author)=toInteger($current_user_id)' : ''}
 
     // Update view count
     SET article.views = coalesce(article.views, 0) + 1
@@ -56,12 +56,12 @@ exports.create_article = (req, res) => {
     CREATE (article:Article)
 
     // Set properties
-    SET article = {article}.properties
+    SET article = $article.properties
 
     // Add relationship to author
     WITH article
     MATCH (author:User)
-    WHERE id(author)=toInt({author_id})
+    WHERE id(author)=toInt($author_id)
     MERGE (article)-[rel:WRITTEN_BY]->(author)
 
     // Save dates in the relationship
@@ -73,9 +73,9 @@ exports.create_article = (req, res) => {
 
     UNWIND
       CASE
-        WHEN {tag_ids} = []
+        WHEN $tag_ids = []
           THEN [null]
-        ELSE {tag_ids}
+        ELSE $tag_ids
       END AS tag_id
 
     OPTIONAL MATCH (tag:Tag)
@@ -91,7 +91,10 @@ exports.create_article = (req, res) => {
       article: req.body.article,
       tag_ids: req.body.tag_ids,
   })
-  .then(result => { res.send(result.records) })
+  .then(result => {
+    console.log(`Article created`)
+    res.send(result.records)
+  })
   .catch(error => {
     console.log(error)
     res.status(500).send(`Error creating article: ${error}`)
@@ -139,9 +142,9 @@ exports.update_article = (req, res) => {
 
     UNWIND
       CASE
-        WHEN {tag_ids} = []
+        WHEN $tag_ids = []
           THEN [null]
-        ELSE {tag_ids}
+        ELSE $tag_ids
       END AS tag_id
 
     OPTIONAL MATCH (tag:Tag)
@@ -178,7 +181,8 @@ exports.delete_article = (req, res) => {
   session
   .run(`
     MATCH (article:Article)-[:WRITTEN_BY]->(author:User)
-    WHERE id(article) = toInt({article_id}) AND id(author)=toInt({author_id})
+    WHERE id(article) = toInt($article_id)
+      AND id(author)=toInteger($author_id)
 
     // Deal with comments
     WITH article
@@ -194,11 +198,18 @@ exports.delete_article = (req, res) => {
   })
   .then(result => {
 
-    if(result.records.length === 0 ) return res.status(400).send(`Article could not be deleted, probably due to insufficient permissions`)
+    if(result.records.length === 0 ) {
+      return res.status(400).send(`Article could not be deleted, probably due to insufficient permissions`)
+    }
+
+    console.log(`Article ${article_id} deleted`)
     res.send("Article deleted successfully")
 
   })
-  .catch(error => { res.status(500).send(`Error deleting article: ${error}`) })
+  .catch(error => {
+    console.log(error)
+    res.status(500).send(`Error deleting article: ${error}`)
+  })
   .finally(() => { session.close() })
 }
 
@@ -216,19 +227,20 @@ exports.get_article_list = (req, res) => {
       MATCH (article:Article)-[:WRITTEN_BY]->(author:User)
 
       // Show only published articles or articles written by user
-      WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
+      WHERE article.published = true
+        ${res.locals.user ? 'OR id(author)=toInteger($current_user_id)' : ''}
 
       // Using search bar to find matching titles
       WITH article
-      ${req.query.search ? 'WHERE toLower(article.title) CONTAINS toLower({search})' : ''}
+      ${req.query.search ? 'WHERE toLower(article.title) CONTAINS toLower($search)' : ''}
 
       // Filter by tag if provided
       WITH article
-      ${req.query.tag_id ? 'MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt({tag_id})' : ''}
+      ${req.query.tag_id ? 'MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt($tag_id)' : ''}
 
       // Filter by user if provided
       WITH article
-      ${req.query.author_id ? 'MATCH (author:User)<-[WRITTEN_BY]-(article) WHERE id(author) = toInt({author_id})' : ''}
+      ${req.query.author_id ? 'MATCH (author:User)<-[WRITTEN_BY]-(article) WHERE id(author) = toInt($author_id)' : ''}
 
       // Sorting and ordering
       // THIS IS A MESS BECAUSE NEO4J DOES NOT PARSE PARAMETERS PROPERLY HERE
@@ -243,7 +255,7 @@ exports.get_article_list = (req, res) => {
 
       // Return only articles by batch
       WITH article_count,
-      article_collection[${req.query.start_index ? 'toInt({start_index})' : '0' }..${req.query.start_index ? 'toInt({start_index})' : '0' }+${req.query.batch_size ? 'toInt({batch_size})' : '10' }]
+      article_collection[${req.query.start_index ? 'toInteger($start_index)' : '0' }..${req.query.start_index ? 'toInteger($start_index)' : '0' }+${req.query.batch_size ? 'toInteger($batch_size)' : '10' }]
       AS article_batch
       UNWIND article_batch AS article
 

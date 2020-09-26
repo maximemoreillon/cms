@@ -21,7 +21,7 @@ exports.get_article = (req, res) => {
       ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
     // Update view count
-    SET article.views = article.views + 1
+    SET article.views = coalesce(article.views, 0) + 1
 
     // Get the tags of the article
     WITH article, author, relationship
@@ -36,7 +36,10 @@ exports.get_article = (req, res) => {
     console.log(`Article ${article_id} requested`)
     res.send(result.records)
   })
-  .catch(error => { res.status(500).send(`Error getting article: ${error}`) })
+  .catch(error => {
+    console.log(error)
+    res.status(500).send(`Error getting article: ${error}`)
+  })
   .finally(() => { session.close() })
 
 }
@@ -89,7 +92,10 @@ exports.create_article = (req, res) => {
       tag_ids: req.body.tag_ids,
   })
   .then(result => { res.send(result.records) })
-  .catch(error => { res.status(500).send(`Error creating article: ${error}`) })
+  .catch(error => {
+    console.log(error)
+    res.status(500).send(`Error creating article: ${error}`)
+  })
   .finally(() => { session.close() })
 }
 
@@ -108,8 +114,8 @@ exports.update_article = (req, res) => {
   .run(`
     // Find the article node and update it
     MATCH (article:Article)-[rel:WRITTEN_BY]->(author:User)
-    WHERE id(article) = toInt({article_id})
-      AND id(author)=toInt({author_id})
+    WHERE id(article) = toInt($article_id)
+      AND id(author)=toInteger($author_id)
 
     // Remove previously set properties
     REMOVE article.thumbnail_src
@@ -117,7 +123,8 @@ exports.update_article = (req, res) => {
     REMOVE article.title
 
     // Set the new properties
-    SET article = {article_properties}
+    // Might be better with a +=
+    SET article += $article_properties
 
     // Update the edition date
     SET rel.edition_date = date()
@@ -153,7 +160,10 @@ exports.update_article = (req, res) => {
   .then(result => {
     if(result.records.length === 0 ) return res.status(400).send(`Article could not be updated, probably due to insufficient permissions`)
     res.send(result.records) })
-  .catch(error => { res.status(500).send(`Error updating article: ${error}`) })
+  .catch(error => {
+    console.log(error)
+    res.status(500).send(`Error updating article: ${error}`)
+  })
   .finally(() => { session.close() })
 
 }

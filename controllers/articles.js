@@ -17,14 +17,25 @@ exports.get_article = (req, res) => {
     // Show only published articles or articles written by user
     WITH article
     MATCH (article)-[relationship:WRITTEN_BY]->(author:User)
-    WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
+    WHERE article.published = true
+      ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
 
-    RETURN article, author, relationship
+    // Update view count
+    SET article.views = article.views + 1
+
+    // Get the tags of the article
+    WITH article, author, relationship
+    MATCH (tag:Tag)-[:APPLIED_TO]->(article)
+
+    RETURN article, author, relationship, collect(tag) as tags
     `, {
     current_user_id: return_user_id(res),
     article_id: article_id,
   })
-  .then(result => { res.send(result.records) })
+  .then(result => {
+    console.log(`Article ${article_id} requested`)
+    res.send(result.records)
+  })
   .catch(error => { res.status(500).send(`Error getting article: ${error}`) })
   .finally(() => { session.close() })
 
@@ -230,8 +241,12 @@ exports.get_article_list = (req, res) => {
       WITH article, article_count
       MATCH (article)-[relationship:WRITTEN_BY]->(author:User)
 
+      // Get the tags of the article
+      WITH article, article_count, author, relationship
+      MATCH (tag:Tag)-[:APPLIED_TO]->(article)
+
       // Return articles, tags are sent with a different call
-      RETURN article, article_count, author, relationship
+      RETURN article, article_count, author, relationship, collect(tag) as tags
       `, {
         current_user_id: return_user_id(res),
         author_id: req.query.author_id,
@@ -242,7 +257,10 @@ exports.get_article_list = (req, res) => {
         order: req.query.order,
         batch_size: req.query.batch_size,
       })
-    .then(result => { res.send(result.records) })
+    .then(result => {
+      console.log(`Requested article list`)
+      res.send(result.records)
+    })
     .catch(error => {
       console.log(error)
       res.status(500).send(`Error getting articles: ${error}`)

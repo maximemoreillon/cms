@@ -25,7 +25,7 @@ exports.get_article = (req, res) => {
 
     // Get the tags of the article
     WITH article, author, relationship
-    MATCH (tag:Tag)-[:APPLIED_TO]->(article)
+    OPTIONAL MATCH (tag:Tag)-[:APPLIED_TO]->(article)
 
     RETURN article, author, relationship, collect(tag) as tags
     `, {
@@ -253,7 +253,7 @@ exports.get_article_list = (req, res) => {
 
       // Get the tags of the article
       WITH article, article_count, author, relationship
-      MATCH (tag:Tag)-[:APPLIED_TO]->(article)
+      OPTIONAL MATCH (tag:Tag)-[:APPLIED_TO]->(article)
 
       // Return articles, tags are sent with a different call
       RETURN article, article_count, author, relationship, collect(tag) as tags

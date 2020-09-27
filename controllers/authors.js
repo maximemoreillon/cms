@@ -11,7 +11,7 @@ exports.get_author = (req, res) => {
   session
   .run(`
     MATCH (author:User)
-    WHERE id(author) = toInt({author_id})
+    WHERE id(author) = toInt($author_id)
     RETURN author
     `, {
     author_id: author_id,
@@ -31,11 +31,12 @@ exports.get_article_author = (req, res) => {
   session
   .run(`
     MATCH (author:User)<-[:WRITTEN_BY]-(article:Article)
-    WHERE id(article) = toInt({article_id})
+    WHERE id(article) = toInt($article_id)
 
     // NOT SURE IF FILTERING WORKS
     WITH author, article
-    WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
+    WHERE article.published = true
+    ${res.locals.user ? 'OR id(author)=toInt($current_user_id)' : ''}
 
     RETURN author
     `, {

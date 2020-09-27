@@ -9,11 +9,11 @@ exports.create_comment = (req, res) => {
   .run(`
     // Find article node
     MATCH (article:Article)
-    WHERE id(article) = toInt({article_id})
+    WHERE id(article) = toInt($article_id)
 
     // Create comment
     CREATE (comment:Comment)-[:ABOUT]->(article)
-    SET comment = {comment}.properties
+    SET comment = $comment.properties
     SET comment.date = date()
 
     RETURN comment
@@ -21,8 +21,14 @@ exports.create_comment = (req, res) => {
     article_id: req.body.article_id,
     comment: req.body.comment,
   })
-  .then(result => { res.send(result.records) })
-  .catch(error => { res.status(500).send(`Error creatin comment: ${error}`) })
+  .then(result => {
+    console.log(`Comment created`)
+    res.send(result.records)
+   })
+  .catch(error => {
+    console.log(error)
+    res.status(500).send(`Error creatin comment: ${error}`)
+  })
   .finally(() => { session.close() })
 }
 
@@ -33,7 +39,7 @@ exports.delete_comment = (req, res) => {
   .run(`
     // Find the comment
     MATCH (comment:Comment)
-    WHERE id(comment) = toInt({comment_id})
+    WHERE id(comment) = toInteger($comment_id)
 
     // Match the user requesting
     WITH comment
@@ -69,7 +75,7 @@ exports.get_article_comments = (req, res) => {
   session
   .run(`
     MATCH (comment:Comment)-[:ABOUT]->(article:Article)
-    WHERE id(article) = toInt({article_id})
+    WHERE id(article) = toInt($article_id)
 
     WITH comment, article
     MATCH (article)-[:WRITTEN_BY]->(author:User)
@@ -81,7 +87,10 @@ exports.get_article_comments = (req, res) => {
       article_id: article_id,
     })
   .then(result => { res.send(result.records) })
-  .catch(error => { res.status(500).send(`Error getting comments: ${error}`) })
+  .catch(error => {
+    console.log(error)
+    res.status(500).send(`Error getting comments: ${error}`)
+  })
   .finally(() => { session.close() })
 
 }

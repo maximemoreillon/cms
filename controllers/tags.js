@@ -12,7 +12,7 @@ exports.get_tag = (req, res) => {
   session
   .run(`
     MATCH (tag:Tag)
-    WHERE id(tag) = toInt({tag_id})
+    WHERE id(tag) = toInt($tag_id)
     RETURN tag
     `, {
     tag_id: tag_id,
@@ -25,16 +25,24 @@ exports.get_tag = (req, res) => {
 exports.create_tag = (req, res) => {
   // Route to create a single tag
 
+  let tag_name = req.body.tag_name
+
   var session = driver.session()
   session
   .run(`
-    MERGE (tag:Tag {name:{tag_name}})
+    MERGE (tag:Tag {name:$tag_name})
     RETURN tag
     `, {
     tag_name: req.body.tag_name,
   })
-  .then(result => { res.send(result.records) })
-  .catch(error => { res.status(500).send(`Error creating tag: ${error}`) })
+  .then(result => {
+    console.log(`Tag ${tag_name} created`)
+    res.send(result.records)
+  })
+  .catch(error => {
+    console.log(error)
+    res.status(500).send(`Error creating tag: ${error}`)
+   })
   .finally(() => { session.close() })
 }
 
@@ -51,15 +59,21 @@ exports.update_tag = (req, res) => {
   session
   .run(`
     MATCH (tag:Tag)
-    WHERE id(tag) = toInt({tag}.identity.low)
-    SET tag = {propoerties}
+    WHERE id(tag) = toInteger($tag_id)
+    SET tag = properties
     RETURN tag
     `, {
       tag_id: tag_id,
-      propoerties: req.body.propoerties,
+      properties: req.body.properties,
   })
-  .then(result => { res.send(result.records) })
-  .catch(error => { res.status(500).send(`Error updating tag: ${error}`) })
+  .then(result => {
+    console.log(`Tag ${tag_id} updated`)
+    res.send(result.records)
+  })
+  .catch(error => {
+    console.log(error)
+    res.status(500).send(`Error updating tag: ${error}`)
+  })
   .finally(() => { session.close() })
 }
 
@@ -76,12 +90,15 @@ exports.delete_tag = (req, res) => {
   session
   .run(`
     MATCH (tag:Tag)
-    WHERE id(tag) = toInt({tag_id})
+    WHERE id(tag) = toInteger($tag_id)
     DETACH DELETE tag
     `, {
-    tag_id: req.query.tag_id,
+    tag_id: tag_id,
   })
-  .then(result => { res.send("Tag deleted successfully") })
+  .then(result => {
+    console.log(`Tag ${tag_id} deleted`)
+    res.send("Tag deleted successfully")
+   })
   .catch(error => {
     console.error(error)
     res.status(500).send(`Error deleting tag: ${error}`)
@@ -99,7 +116,10 @@ exports.get_tag_list = (req, res) => {
     RETURN tag
     `, {})
   .then(result => { res.send(result.records) })
-  .catch(error => { res.status(500).send(`Error getting tag list: ${error}`) })
+  .catch(error => {
+    console.log(error)
+    res.status(500).send(`Error getting tag list: ${error}`)
+   })
   .finally(() => { session.close() })
 }
 
@@ -129,12 +149,13 @@ exports.get_article_tags = (req, res) => {
   session
   .run(`
     MATCH (tag:Tag)-[:APPLIED_TO]->(article:Article)
-    WHERE id(article) = toInt({article_id})
+    WHERE id(article) = toInteger($article_id)
 
     // NOT SURE IF FILTERING WORKS
     WITH tag, article
     MATCH (article)-[:WRITTEN_BY]->(author:User)
-    WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
+    WHERE article.published = true
+    ${res.locals.user ? 'OR id(author)=toInteger($current_user_id)' : ''}
 
     RETURN tag
     `, {

@@ -137,7 +137,8 @@ exports.update_article = (req, res) => {
     OPTIONAL MATCH (article)<-[r:APPLIED_TO]-(tag:Tag)
     DELETE r
 
-    // Deal with tags EMPTY LISTS ARE A PAIN
+    // Deal with tags
+    // EMPTY LISTS ARE A PAIN
     WITH article
 
     UNWIND
@@ -161,7 +162,10 @@ exports.update_article = (req, res) => {
       author_id: res.locals.user.identity.low,
   })
   .then(result => {
-    if(result.records.length === 0 ) return res.status(400).send(`Article could not be updated, probably due to insufficient permissions`)
+    if(result.records.length === 0 ) {
+      return res.status(400).send(`Article could not be updated, probably due to insufficient permissions`)
+    }
+    console.log(`Article ${article_id} updated`)
     res.send(result.records) })
   .catch(error => {
     console.log(error)

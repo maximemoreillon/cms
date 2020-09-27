@@ -23,7 +23,7 @@ deployment:
   stage: deploy
   script:
     # create/update the deployment
-    - envsubst < deployment.yml | kubectl apply -f -
+    - envsubst < kubernetes_manifest.yml | kubectl apply -f -
     # Pull latest image of deployment
     - kubectl rollout restart deployment/${APPLICATION_NAME}
   environment:

@@ -60,7 +60,7 @@ exports.update_tag = (req, res) => {
   .run(`
     MATCH (tag:Tag)
     WHERE id(tag) = toInteger($tag_id)
-    SET tag = properties
+    SET tag = $properties
     RETURN tag
     `, {
       tag_id: tag_id,

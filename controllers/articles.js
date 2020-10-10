@@ -12,7 +12,7 @@ exports.get_article = (req, res) => {
   session
   .run(`
     MATCH (article:Article)
-    WHERE id(article) = toInt($article_id)
+    WHERE id(article) = toInteger($article_id)
 
     // Show only published articles or articles written by user
     WITH article
@@ -61,7 +61,7 @@ exports.create_article = (req, res) => {
     // Add relationship to author
     WITH article
     MATCH (author:User)
-    WHERE id(author)=toInt($author_id)
+    WHERE id(author)=toInteger($author_id)
     MERGE (article)-[rel:WRITTEN_BY]->(author)
 
     // Save dates in the relationship
@@ -79,7 +79,7 @@ exports.create_article = (req, res) => {
       END AS tag_id
 
     OPTIONAL MATCH (tag:Tag)
-    WHERE id(tag) = toInt(tag_id)
+    WHERE id(tag) = toInteger(tag_id)
     WITH collect(tag) as tags, article
     FOREACH(tag IN tags | MERGE (article)<-[:APPLIED_TO]-(tag))
 
@@ -111,13 +111,17 @@ exports.update_article = (req, res) => {
     || req.body.article_id
     || req.body.article.identity.low
 
+  let article_properties = req.body.article_properties
+    || req.body.properties
+    || req.body.article.properties
+
 
   var session = driver.session()
   session
   .run(`
     // Find the article node and update it
     MATCH (article:Article)-[rel:WRITTEN_BY]->(author:User)
-    WHERE id(article) = toInt($article_id)
+    WHERE id(article) = toInteger($article_id)
       AND id(author)=toInteger($author_id)
 
     // Remove previously set properties
@@ -149,7 +153,7 @@ exports.update_article = (req, res) => {
       END AS tag_id
 
     OPTIONAL MATCH (tag:Tag)
-    WHERE id(tag) = toInt(tag_id)
+    WHERE id(tag) = toInteger(tag_id)
     WITH collect(tag) as tags, article
     FOREACH(tag IN tags | MERGE (article)<-[:APPLIED_TO]-(tag))
 
@@ -157,7 +161,7 @@ exports.update_article = (req, res) => {
     RETURN article
     `, {
       article_id: article_id,
-      article_properties: req.body.article_properties || req.body.properties || req.body.article.properties,
+      article_properties: article_properties,
       tag_ids: req.body.tag_ids,
       author_id: res.locals.user.identity.low,
   })
@@ -185,7 +189,7 @@ exports.delete_article = (req, res) => {
   session
   .run(`
     MATCH (article:Article)-[:WRITTEN_BY]->(author:User)
-    WHERE id(article) = toInt($article_id)
+    WHERE id(article) = toInteger($article_id)
       AND id(author)=toInteger($author_id)
 
     // Deal with comments
@@ -240,11 +244,11 @@ exports.get_article_list = (req, res) => {
 
       // Filter by tag if provided
       WITH article
-      ${req.query.tag_id ? 'MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInt($tag_id)' : ''}
+      ${req.query.tag_id ? 'MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInteger($tag_id)' : ''}
 
       // Filter by user if provided
       WITH article
-      ${req.query.author_id ? 'MATCH (author:User)<-[WRITTEN_BY]-(article) WHERE id(author) = toInt($author_id)' : ''}
+      ${req.query.author_id ? 'MATCH (author:User)<-[WRITTEN_BY]-(article) WHERE id(author) = toInteger($author_id)' : ''}
 
       // Sorting and ordering
       // THIS IS A MESS BECAUSE NEO4J DOES NOT PARSE PARAMETERS PROPERLY HERE

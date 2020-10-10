@@ -9,7 +9,7 @@ exports.create_comment = (req, res) => {
   .run(`
     // Find article node
     MATCH (article:Article)
-    WHERE id(article) = toInt($article_id)
+    WHERE id(article) = toInteger($article_id)
 
     // Create comment
     CREATE (comment:Comment)-[:ABOUT]->(article)
@@ -27,7 +27,7 @@ exports.create_comment = (req, res) => {
    })
   .catch(error => {
     console.log(error)
-    res.status(500).send(`Error creatin comment: ${error}`)
+    res.status(500).send(`Error creating comment: ${error}`)
   })
   .finally(() => { session.close() })
 }
@@ -44,7 +44,7 @@ exports.delete_comment = (req, res) => {
     // Match the user requesting
     WITH comment
     MATCH (user:User)
-    WHERE id(user)=toInt({user_id})
+    WHERE id(user)=toInteger({user_id})
       AND ( (comment)-[:ABOUT]->(:Article)-[:WRITTEN_BY]->(user:User)
         OR user.isAdmin )
 
@@ -75,11 +75,11 @@ exports.get_article_comments = (req, res) => {
   session
   .run(`
     MATCH (comment:Comment)-[:ABOUT]->(article:Article)
-    WHERE id(article) = toInt($article_id)
+    WHERE id(article) = toInteger($article_id)
 
     WITH comment, article
     MATCH (article)-[:WRITTEN_BY]->(author:User)
-    WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInt({current_user_id})' : ''}
+    WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInteger({current_user_id})' : ''}
 
     RETURN comment
     `, {

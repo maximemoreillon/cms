@@ -12,7 +12,7 @@ exports.get_tag = (req, res) => {
   session
   .run(`
     MATCH (tag:Tag)
-    WHERE id(tag) = toInt($tag_id)
+    WHERE id(tag) = toInteger($tag_id)
     RETURN tag
     `, {
     tag_id: tag_id,

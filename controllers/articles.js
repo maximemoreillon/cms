@@ -1,22 +1,32 @@
 const driver = require('../db_config.js')
 const return_user_id = require('../identification.js')
 
-exports.get_article = (req, res) => {
-  // Route to get a single article using its ID
 
-  let article_id = req.query.id
+const get_article_id = (req) => {
+
+  return req.query.id
     || req.query.article_id
     || req.params.article_id
 
-  var session = driver.session()
+}
+
+exports.get_article = (req, res) => {
+  // Route to get a single article using its ID
+
+  const article_id = req.query.id
+    || req.query.article_id
+    || req.params.article_id
+
+  const session = driver.session()
   session
   .run(`
+    // Match article by ID
     MATCH (article:Article)
     WHERE id(article) = toInteger($article_id)
 
-    // Show only published articles or articles written by user
+    // Show only published articles or articles written by current user
     WITH article
-    MATCH (article)-[relationship:WRITTEN_BY]->(author:User)
+    MATCH (article)-[authorship:WRITTEN_BY]->(author:User)
     WHERE article.published = true
       ${res.locals.user ? 'OR id(author)=toInteger($current_user_id)' : ''}
 
@@ -24,16 +34,18 @@ exports.get_article = (req, res) => {
     SET article.views = coalesce(article.views, 0) + 1
 
     // Get the tags of the article
-    WITH article, author, relationship
+    // OPTIONAL MATCH because some articles might not have a tag
+    WITH article, author, authorship
     OPTIONAL MATCH (tag:Tag)-[:APPLIED_TO]->(article)
 
-    RETURN article, author, relationship, collect(tag) as tags
+    // Tags is an array
+    RETURN article, author, authorship, collect(tag) as tags
     `, {
     current_user_id: return_user_id(res),
     article_id: article_id,
   })
   .then(result => {
-    console.log(`Article ${article_id} requested`)
+    console.log(`Article ${article_id} queried`)
     res.send(result.records)
   })
   .catch(error => {
@@ -62,13 +74,14 @@ exports.create_article = (req, res) => {
     WITH article
     MATCH (author:User)
     WHERE id(author)=toInteger($author_id)
-    MERGE (article)-[rel:WRITTEN_BY]->(author)
+    MERGE (article)-[authorship:WRITTEN_BY]->(author)
 
     // Save dates in the relationship
-    SET rel.creation_date = date()
-    SET rel.edition_date = date()
+    SET authorship.creation_date = date()
+    SET authorship.edition_date = date()
 
-    // Deal with tags EMPTY LISTS ARE A PAIN
+    // Deal with tags
+    // EMPTY LISTS ARE A PAIN
     WITH article
 
     UNWIND
@@ -105,18 +118,17 @@ exports.create_article = (req, res) => {
 exports.update_article = (req, res) => {
   // Route to update an article
 
-  // TODO: consider send article properties separately from article_id
-
-  let article_id = req.params.article_id
+  const article_id = req.params.article_id
     || req.body.article_id
     || req.body.article.identity.low
 
-  let article_properties = req.body.article_properties
+  // Not using the body directly because tag IDs is also provided
+  const article_properties = req.body.article_properties
     || req.body.properties
     || req.body.article.properties
 
 
-  var session = driver.session()
+  const session = driver.session()
   session
   .run(`
     // Find the article node and update it
@@ -166,9 +178,11 @@ exports.update_article = (req, res) => {
       author_id: res.locals.user.identity.low,
   })
   .then(result => {
+
     if(result.records.length === 0 ) {
       return res.status(400).send(`Article could not be updated, probably due to insufficient permissions`)
     }
+
     console.log(`Article ${article_id} updated`)
     res.send(result.records) })
   .catch(error => {
@@ -226,21 +240,52 @@ exports.get_article_list = (req, res) => {
 
     // Route to get multiple articles
 
-    // TODO: CHECK FOR INJECTION RISK
+    const privacy_query = () => {
+      if(res.locals.user) return `OR id(author)=toInteger($current_user_id)`
+      else return ``
+    }
+
+    const keyword_query = () => {
+      if(req.query.search)  return `WHERE toLower(article.title) CONTAINS toLower($search)`
+      else return ``
+    }
+
+    const sorting = () => {
+
+      let sorting = 'authorship.edition_date'
+
+      if(req.query.sort) {
+        const sorting_lookup = {date : 'authorship.edition_date', title: 'article.title', views: 'article.views'}
+
+        if(sorting_lookup[req.query.sort]) {
+          console.log(`Valid sorting: ${sorting_lookup[req.query.sort]}`)
+          sorting = sorting_lookup[req.query.sort]
+        }
+        else {
+          console.log(`Invalid sorting: ${req.query.sort}`)
+        }
+      }
+
+      return sorting
+    }
+
+    const ordering = () => {
+      return req.query.order === 'ASC' ? 'ASC' : 'DESC'
+    }
 
     var session = driver.session()
     session
     .run(`
-      // Get all articles
+      // Get all articles and teir author
       MATCH (article:Article)-[:WRITTEN_BY]->(author:User)
 
       // Show only published articles or articles written by user
       WHERE article.published = true
-        ${res.locals.user ? 'OR id(author)=toInteger($current_user_id)' : ''}
+      ${privacy_query()}
 
       // Using search bar to find matching titles
       WITH article
-      ${req.query.search ? 'WHERE toLower(article.title) CONTAINS toLower($search)' : ''}
+      ${keyword_query()}
 
       // Filter by tag if provided
       WITH article
@@ -253,10 +298,9 @@ exports.get_article_list = (req, res) => {
       // Sorting and ordering
       // THIS IS A MESS BECAUSE NEO4J DOES NOT PARSE PARAMETERS PROPERLY HERE
       WITH article
-      MATCH (article)-[relationship:WRITTEN_BY]->(:User)
-      WITH article, relationship
-      ORDER BY ${req.query.sort ? (req.query.sort === 'article.title' ? 'article.title' : 'relationship.edition_date') : 'relationship.edition_date'}
-      ${req.query.order ? (req.query.order === 'ASC' ? 'ASC' : 'DESC') : 'DESC'}
+      MATCH (article)-[authorship:WRITTEN_BY]->(:User)
+      WITH article, authorship
+      ORDER BY ${sorting()} ${ordering()}
 
       // Collect everything for count
       WITH count(article) as article_count, collect(article) as article_collection
@@ -269,14 +313,15 @@ exports.get_article_list = (req, res) => {
 
       // Get the author and its relationship to author
       WITH article, article_count
-      MATCH (article)-[relationship:WRITTEN_BY]->(author:User)
+      MATCH (article)-[authorship:WRITTEN_BY]->(author:User)
 
       // Get the tags of the article
-      WITH article, article_count, author, relationship
+      // OPTIONAL MATCH because some articles have no tag
+      WITH article, article_count, author, authorship
       OPTIONAL MATCH (tag:Tag)-[:APPLIED_TO]->(article)
 
-      // Return articles, tags are sent with a different call
-      RETURN article, article_count, author, relationship, collect(tag) as tags
+      // Return articles
+      RETURN article, article_count, author, authorship, collect(tag) as tags
       `, {
         current_user_id: return_user_id(res),
         author_id: req.query.author_id,

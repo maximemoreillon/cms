@@ -1,5 +1,7 @@
 const axios = require('axios')
 
+// Not sure if this is used or not
+
 // secret set by the application
 exports.authentication_api_url = undefined
 
@@ -13,13 +15,11 @@ exports.middleware = (req, res, next) => {
 
   if(!('authorization' in req.headers)) return next()
 
-  let token = req.headers.authorization.split(" ")[1];
-  if(!token) return next()
+  let jwt = req.headers.authorization.split(" ")[1];
+  if(!jwt) return next()
 
-  axios.post(exports.authentication_api_url, { jwt: token })
-  .then(response => {
-    res.locals.user = response.data
-  })
+  axios.post(exports.authentication_api_url, { jwt })
+  .then(response => { res.locals.user = response.data })
   .catch( () => { })
   .finally( () => {return next()})
 

@@ -119,8 +119,6 @@ exports.update_article = (req, res) => {
   // Route to update an article
 
   const article_id = req.params.article_id
-    || req.body.article_id
-    || req.body.article.identity.low
 
   // Not using the body directly because tag IDs is also provided
   const article_properties = req.body.article_properties
@@ -172,10 +170,10 @@ exports.update_article = (req, res) => {
     // Return the article
     RETURN article
     `, {
+      author_id: res.locals.user.identity.low,
       article_id: article_id,
       article_properties: article_properties,
       tag_ids: req.body.tag_ids,
-      author_id: res.locals.user.identity.low,
   })
   .then(result => {
 
@@ -195,9 +193,7 @@ exports.update_article = (req, res) => {
 
 exports.delete_article = (req, res) => {
 
-  let article_id = req.query.article_id
-    || req.query.id
-    || req.params.article_id
+  let article_id = req.params.article_id
 
   var session = driver.session()
   session
@@ -237,40 +233,25 @@ exports.delete_article = (req, res) => {
 
 
 exports.get_article_list = (req, res) => {
-
     // Route to get multiple articles
-
-    const privacy_query = () => {
-      if(res.locals.user) return `OR id(author)=toInteger($current_user_id)`
-      else return ``
-    }
-
-    const keyword_query = () => {
-      if(req.query.search)  return `WHERE toLower(article.title) CONTAINS toLower($search)`
-      else return ``
-    }
 
     const sorting = () => {
 
       let sorting = 'authorship.edition_date'
+      const sorting_lookup = {date : 'authorship.edition_date', title: 'article.title', views: 'article.views'}
 
       if(req.query.sort) {
-        const sorting_lookup = {date : 'authorship.edition_date', title: 'article.title', views: 'article.views'}
-
-        if(sorting_lookup[req.query.sort]) {
-          console.log(`Valid sorting: ${sorting_lookup[req.query.sort]}`)
-          sorting = sorting_lookup[req.query.sort]
-        }
-        else {
-          console.log(`Invalid sorting: ${req.query.sort}`)
-        }
+        if(sorting_lookup[req.query.sort]) sorting = sorting_lookup[req.query.sort]
       }
 
       return sorting
     }
 
-    const ordering = () => {
-      return req.query.order === 'ASC' ? 'ASC' : 'DESC'
+
+    const batching = () => {
+      const batch_size = req.query.batch_size ? 'toInteger($batch_size)' : '10'
+      const start_index = req.query.start_index ? 'toInteger($start_index)' : '0'
+      return `WITH article_count, article_collection[${start_index}..${start_index}+${batch_size}] AS article_batch`
     }
 
     var session = driver.session()
@@ -281,11 +262,11 @@ exports.get_article_list = (req, res) => {
 
       // Show only published articles or articles written by user
       WHERE article.published = true
-      ${privacy_query()}
+      ${res.locals.user ? `OR id(author)=toInteger($current_user_id)` : ``}
 
       // Using search bar to find matching titles
       WITH article
-      ${keyword_query()}
+      ${req.query.search ?  `WHERE toLower(article.title) CONTAINS toLower($search)` : ``}
 
       // Filter by tag if provided
       WITH article
@@ -296,19 +277,18 @@ exports.get_article_list = (req, res) => {
       ${req.query.author_id ? 'MATCH (author:User)<-[WRITTEN_BY]-(article) WHERE id(author) = toInteger($author_id)' : ''}
 
       // Sorting and ordering
-      // THIS IS A MESS BECAUSE NEO4J DOES NOT PARSE PARAMETERS PROPERLY HERE
+      // Can sort by views, date or title (alphabetically)
       WITH article
       MATCH (article)-[authorship:WRITTEN_BY]->(:User)
       WITH article, authorship
-      ORDER BY ${sorting()} ${ordering()}
+      ORDER BY ${sorting()} ${req.query.order === 'ASC' ? 'ASC' : 'DESC'}
 
-      // Collect everything for count
+      // Collect everything for count and batching
       WITH count(article) as article_count, collect(article) as article_collection
 
       // Return only articles by batch
-      WITH article_count,
-      article_collection[${req.query.start_index ? 'toInteger($start_index)' : '0' }..${req.query.start_index ? 'toInteger($start_index)' : '0' }+${req.query.batch_size ? 'toInteger($batch_size)' : '10' }]
-      AS article_batch
+      ${batching()}
+
       UNWIND article_batch AS article
 
       // Get the author and its relationship to author
@@ -326,10 +306,10 @@ exports.get_article_list = (req, res) => {
         current_user_id: return_user_id(res),
         author_id: req.query.author_id,
         tag_id: req.query.tag_id,
-        start_index: req.query.start_index,
         search: req.query.search,
         sorting: req.query.sort,
         order: req.query.order,
+        start_index: req.query.start_index,
         batch_size: req.query.batch_size,
       })
     .then(result => {

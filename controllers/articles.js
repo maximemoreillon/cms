@@ -1,5 +1,5 @@
 const driver = require('../db_config.js')
-const return_user_id = require('../identification.js')
+const get_current_user_id = require('../identification.js')
 
 
 const get_article_id = (req) => {
@@ -13,9 +13,11 @@ const get_article_id = (req) => {
 exports.get_article = (req, res) => {
   // Route to get a single article using its ID
 
-  const article_id = req.query.id
-    || req.query.article_id
-    || req.params.article_id
+  const article_id = get_article_id()
+
+  if(!article_id) {
+    return res.status(400).send(`Missing article ID`)
+  }
 
   const session = driver.session()
   session
@@ -41,7 +43,7 @@ exports.get_article = (req, res) => {
     // Tags is an array
     RETURN article, author, authorship, collect(tag) as tags
     `, {
-    current_user_id: return_user_id(res),
+    current_user_id: get_current_user_id(res),
     article_id: article_id,
   })
   .then(result => {
@@ -60,6 +62,18 @@ exports.get_article = (req, res) => {
 
 exports.create_article = (req, res) => {
   // Route to create an article
+
+  const current_user_id = get_current_user_id(res)
+  if(!current_user_id) {
+    return res.status(403).send(`This action is restricted to authenticated users`)
+  }
+
+  const article_properties = req.body.article
+  if(!article_properties) {
+    return res.status(400).send(`Missing article in request body`)
+  }
+
+  const tag_ids = req.body.tag_ids || []
 
   var session = driver.session()
   session
@@ -100,9 +114,9 @@ exports.create_article = (req, res) => {
     RETURN article
 
     `, {
-      author_id: res.locals.user.identity.low,
-      article: req.body.article,
-      tag_ids: req.body.tag_ids,
+      author_id: current_user_id,
+      article: article_properties,
+      tag_ids: tag_ids,
   })
   .then(result => {
     console.log(`Article created`)
@@ -118,7 +132,15 @@ exports.create_article = (req, res) => {
 exports.update_article = (req, res) => {
   // Route to update an article
 
-  const article_id = req.params.article_id
+  const current_user_id = get_current_user_id(res)
+  if(!current_user_id) {
+    return res.status(403).send(`This action is restricted to authenticated users`)
+  }
+
+  const article_id = get_article_id()
+  if(!article_id) {
+    return res.status(400).send(`Missing article ID`)
+  }
 
   // Not using the body directly because tag IDs is also provided
   const article_properties = req.body.article_properties
@@ -170,7 +192,7 @@ exports.update_article = (req, res) => {
     // Return the article
     RETURN article
     `, {
-      author_id: res.locals.user.identity.low,
+      author_id: current_user_id,
       article_id: article_id,
       article_properties: article_properties,
       tag_ids: req.body.tag_ids,
@@ -193,7 +215,15 @@ exports.update_article = (req, res) => {
 
 exports.delete_article = (req, res) => {
 
-  let article_id = req.params.article_id
+  const current_user_id = get_current_user_id(res)
+  if(!current_user_id) {
+    return res.status(403).send(`This action is restricted to authenticated users`)
+  }
+
+  const article_id = req.params.article_id
+  if(!article_id) {
+    return res.status(400).send(`Missing article ID`)
+  }
 
   var session = driver.session()
   session
@@ -211,7 +241,7 @@ exports.delete_article = (req, res) => {
     DETACH DELETE article
     RETURN 'success'
     `, {
-    author_id: res.locals.user.identity.low,
+    author_id: current_user_id,
     article_id: article_id,
   })
   .then(result => {
@@ -303,7 +333,7 @@ exports.get_article_list = (req, res) => {
       // Return articles
       RETURN article, article_count, author, authorship, collect(tag) as tags
       `, {
-        current_user_id: return_user_id(res),
+        current_user_id: get_current_user_id(res),
         author_id: req.query.author_id,
         tag_id: req.query.tag_id,
         search: req.query.search,

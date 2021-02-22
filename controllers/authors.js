@@ -1,10 +1,21 @@
 const driver = require('../db_config.js')
 const return_user_id = require('../identification.js')
 
+function get_author_id(req) {
+  return req.query.author_id
+    ?? req.params.author_id
+}
+
+const get_article_id = (req) => {
+  return req.query.id
+    ?? req.query.article_id
+    ?? req.params.article_id
+}
+
+
 exports.get_author = (req, res) => {
 
-  let author_id = req.query.author_id
-    || req.params.author_id
+  const author_id = get_author_id(req)
 
   // Route to get an author using his ID
   var session = driver.session()
@@ -24,8 +35,7 @@ exports.get_author = (req, res) => {
 exports.get_article_author = (req, res) => {
   // Route to get author of a given article
 
-  let article_id = req.query.id
-    || req.params.article_id
+  const article_id = get_article_id(req)
 
   var session = driver.session()
   session

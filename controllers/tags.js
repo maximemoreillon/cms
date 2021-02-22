@@ -1,12 +1,17 @@
 const driver = require('../db_config.js')
 const return_user_id = require('../identification.js')
 
+function get_tag_id(req) {
+  return req.params.tag_id
+    ?? req.query.tad_id
+    ?? req.query.id
+
+}
+
 exports.get_tag = (req, res) => {
   // Route to get a single tag using its ID
 
-  let tag_id = req.params.tag_id
-    || req.query.tad_id
-    || req.query.id
+  const tag_id = get_tag_id(req)
 
   var session = driver.session()
   session
@@ -25,7 +30,7 @@ exports.get_tag = (req, res) => {
 exports.create_tag = (req, res) => {
   // Route to create a single tag
 
-  let tag_name = req.body.tag_name
+  const tag_name = req.body.tag_name
 
   var session = driver.session()
   session
@@ -49,9 +54,7 @@ exports.create_tag = (req, res) => {
 exports.update_tag = (req, res) => {
   // Route to update a single tag using
 
-  let tag_id = req.params.tag_id
-    || req.body.tad_id
-    || req.body.id
+  let tag_id = get_tag_id(req)
 
   if(!res.locals.user.properties.isAdmin) return res.status(403).send('Only an administrator can perform this operation')
 
@@ -82,9 +85,7 @@ exports.delete_tag = (req, res) => {
 
   if(!res.locals.user.properties.isAdmin) return res.status(403).send('Only an administrator can perform this operation')
 
-  let tag_id = req.params.tag_id
-    || req.query.tad_id
-    || req.query.id
+  let tag_id = get_tag_id(req)
 
   var session = driver.session()
   session
@@ -142,8 +143,8 @@ exports.get_pinned_tags = (req, res) => {
 exports.get_article_tags = (req, res) => {
   // Route to get tags of a given article
 
-  let article_id = req.query.id
-    || req.params.article_id
+  const article_id = req.query.id
+    ?? req.params.article_id
 
   var session = driver.session()
   session

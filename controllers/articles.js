@@ -5,15 +5,15 @@ const get_current_user_id = require('../identification.js')
 const get_article_id = (req) => {
 
   return req.query.id
-    || req.query.article_id
-    || req.params.article_id
+    ?? req.query.article_id
+    ?? req.params.article_id
 
 }
 
 exports.get_article = (req, res) => {
   // Route to get a single article using its ID
 
-  const article_id = get_article_id()
+  const article_id = get_article_id(req)
 
   if(!article_id) {
     return res.status(400).send(`Missing article ID`)
@@ -137,7 +137,7 @@ exports.update_article = (req, res) => {
     return res.status(403).send(`This action is restricted to authenticated users`)
   }
 
-  const article_id = get_article_id()
+  const article_id = get_article_id(req)
   if(!article_id) {
     return res.status(400).send(`Missing article ID`)
   }

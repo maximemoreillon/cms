@@ -1,7 +1,7 @@
 const express = require('express')
 const auth = require('@moreillon/authentication_middleware')
 
-const controller = require('../controllers/tags.js')
+const controller = require('../../controllers/v1/tags.js')
 
 const router = express.Router()
 

@@ -1,5 +1,5 @@
-const driver = require('../db_config.js')
-const return_user_id = require('../identification.js')
+const driver = require('../../db_config.js')
+const return_user_id = require('../../identification.js')
 
 exports.create_comment = (req, res) => {
   // Route to create a comment

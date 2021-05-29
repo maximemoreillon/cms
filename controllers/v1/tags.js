@@ -1,5 +1,5 @@
-const driver = require('../db_config.js')
-const return_user_id = require('../identification.js')
+const driver = require('../../db_config.js')
+const return_user_id = require('../../identification.js')
 
 function get_tag_id(req) {
   return req.params.tag_id

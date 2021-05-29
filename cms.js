@@ -24,9 +24,8 @@ app.get('/', (req, res) => {
   })
 })
 
-app.use('/articles', require('./routes/articles.js'))
-app.use('/tags', require('./routes/tags.js'))
-app.use('/comments', require('./routes/comments.js'))
-app.use('/authors',require('./routes/authors.js'))
+app.use('/', require('./routes/v1/index.js'))
+app.use('/v1', require('./routes/v1/index.js'))
+app.use('/v2', require('./routes/v2/index.js'))
 
 app.listen(port, () => console.log(`CMS listening on port ${port}`))

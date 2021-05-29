@@ -1,7 +1,7 @@
 const express = require('express')
 const auth = require('@moreillon/authentication_middleware')
 
-const controller = require('../controllers/authors.js')
+const controller = require('../../controllers/v2/authors.js')
 
 const router = express.Router()
 

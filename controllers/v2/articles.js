@@ -1,5 +1,5 @@
-const driver = require('../db_config.js')
-const get_current_user_id = require('../identification.js')
+const driver = require('../../db_config.js')
+const get_current_user_id = require('../../identification.js')
 
 
 const get_article_id = (req) => {
@@ -44,11 +44,22 @@ exports.get_article = (req, res) => {
     RETURN article, author, authorship, collect(tag) as tags
     `, {
     current_user_id: get_current_user_id(res),
-    article_id: article_id,
+    article_id,
   })
-  .then(result => {
+  .then(({records}) => {
+    if (records.length < 1) {
+      console.log(`Article ${article_id} not found`)
+      return res.status(404).send(`Article ${article_id} not found`)
+    }
+    const record = records[0]
+    const article = {
+      ...record.get('article'),
+      author: record.get('author'),
+      authorship: record.get('authorship'),
+      tags: record.get('tags')
+    }
+    res.send(article)
     console.log(`Article ${article_id} queried`)
-    res.send(result.records)
   })
   .catch(error => {
     console.log(error)

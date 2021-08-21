@@ -40,9 +40,11 @@ exports.create_tag = (req, res) => {
     `, {
     tag_name: req.body.tag_name,
   })
-  .then(result => {
-    console.log(`Tag ${tag_name} created`)
-    res.send(result.records)
+  .then(({records}) => {
+    if(!records.length) throw 'Tag creation failed'
+    console.log(`Tag ${tag_name} created haha`)
+    const tag = records[0].get('tag')
+    res.send(tag)
   })
   .catch(error => {
     console.log(error)
@@ -116,7 +118,9 @@ exports.get_tag_list = (req, res) => {
     MATCH (tag:Tag)
     RETURN tag
     `, {})
-  .then(result => { res.send(result.records) })
+  .then( ({records}) => {
+    res.send(records.map(record => record.get('tag')))
+  })
   .catch(error => {
     console.log(error)
     res.status(500).send(`Error getting tag list: ${error}`)

@@ -129,9 +129,10 @@ exports.create_article = (req, res) => {
       article: article_properties,
       tag_ids: tag_ids,
   })
-  .then(result => {
-    console.log(`Article created`)
-    res.send(result.records)
+  .then( ({records}) => {
+    const article = records[0].get('article')
+    res.send(article)
+    console.log(`Article ${article.identity} created`)
   })
   .catch(error => {
     console.log(error)
@@ -204,18 +205,20 @@ exports.update_article = (req, res) => {
     RETURN article
     `, {
       author_id: current_user_id,
-      article_id: article_id,
-      article_properties: article_properties,
+      article_id,
+      article_properties,
       tag_ids: req.body.tag_ids,
   })
-  .then(result => {
+  .then( ({records}) => {
 
-    if(result.records.length === 0 ) {
+    if(!records.length ) {
       return res.status(400).send(`Article could not be updated, probably due to insufficient permissions`)
     }
 
     console.log(`Article ${article_id} updated`)
-    res.send(result.records) })
+    res.send(records[0].get('article'))
+  })
+
   .catch(error => {
     console.log(error)
     res.status(500).send(`Error updating article: ${error}`)
@@ -253,7 +256,7 @@ exports.delete_article = (req, res) => {
     RETURN 'success'
     `, {
     author_id: current_user_id,
-    article_id: article_id,
+    article_id,
   })
   .then(result => {
 
@@ -353,9 +356,10 @@ exports.get_article_list = (req, res) => {
         start_index: req.query.start_index,
         batch_size: req.query.batch_size,
       })
-    .then(result => {
+    .then(({records}) => {
       console.log(`Requested article list`)
-      res.send(result.records)
+      const articles = records.map(record => record.get('article'))
+      res.send(articles)
     })
     .catch(error => {
       console.log(error)

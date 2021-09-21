@@ -94,6 +94,7 @@ exports.create_article = (req, res) => {
 
     // Set properties
     SET article = $article.properties
+    SET article.views = 0
 
     // Add relationship to author
     WITH article
@@ -345,7 +346,7 @@ exports.get_article_list = (req, res) => {
       OPTIONAL MATCH (tag:Tag)-[:APPLIED_TO]->(article)
 
       // Return articles
-      RETURN article, article_count, author, authorship, collect(tag) as tags
+      RETURN DISTINCT article, article_count, author, authorship, collect(tag) as tags
       `, {
         current_user_id: get_current_user_id(res),
         author_id: req.query.author_id,

@@ -296,12 +296,12 @@ exports.get_article_list = (req, res) => {
     const batching = () => {
       const batch_size = req.query.batch_size ? 'toInteger($batch_size)' : '10'
       const start_index = req.query.start_index ? 'toInteger($start_index)' : '0'
-      return `WITH article_count, article_collection[${start_index}..${start_index}+${batch_size}] AS article_batch`
+      return `WITH article_count, article_collection[${start_index}..${start_index}+${batch_size}] AS articles`
     }
 
-    var session = driver.session()
-    session
-    .run(`
+
+
+    const query = `
       // Get all articles and teir author
       MATCH (article:Article)-[:WRITTEN_BY]->(author:User)
 
@@ -324,30 +324,31 @@ exports.get_article_list = (req, res) => {
       // Sorting and ordering
       // Can sort by views, date or title (alphabetically)
       WITH article
-      MATCH (article)-[authorship:WRITTEN_BY]->(:User)
-      WITH article, authorship
+      OPTIONAL MATCH (tag:Tag)-[:APPLIED_TO]->(article)
+
+      WITH article, COLLECT(tag) AS  tags
+
+      MATCH (article)-[authorship:WRITTEN_BY]->(author:User)
+      WITH article, authorship, author, tags
       ORDER BY ${sorting()} ${req.query.order === 'ASC' ? 'ASC' : 'DESC'}
 
+
+
       // Collect everything for count and batching
-      WITH count(article) as article_count, collect(article) as article_collection
+      WITH COUNT(article) AS article_count,
+        COLLECT({article: article, tags: tags, author: author, authorship: authorship}) AS article_collection
 
       // Return only articles by batch
       ${batching()}
 
-      UNWIND article_batch AS article
 
-      // Get the author and its relationship to author
-      WITH article, article_count
-      MATCH (article)-[authorship:WRITTEN_BY]->(author:User)
 
-      // Get the tags of the article
-      // OPTIONAL MATCH because some articles have no tag
-      WITH article, article_count, author, authorship
-      OPTIONAL MATCH (tag:Tag)-[:APPLIED_TO]->(article)
 
       // Return articles
-      RETURN DISTINCT article, article_count, author, authorship, collect(tag) as tags
-      `, {
+      RETURN article_count, articles
+      `
+
+    const params = {
         current_user_id: get_current_user_id(res),
         author_id: req.query.author_id,
         tag_id: req.query.tag_id,
@@ -356,11 +357,26 @@ exports.get_article_list = (req, res) => {
         order: req.query.order,
         start_index: req.query.start_index,
         batch_size: req.query.batch_size,
-      })
+      }
+
+
+
+    const session = driver.session()
+    session.run(query , params)
     .then(({records}) => {
-      console.log(`Requested article list`)
-      const articles = records.map(record => record.get('article'))
-      res.send(articles)
+
+      const output = {
+        article_count: records[0].get('article_count'),
+        articles: records[0].get('articles').map(a => ({
+          ...a.article,
+          author: a.author,
+          authorship: a.authorship,
+          tags: a.tags,
+        })),
+      }
+
+      res.send(output)
+      console.log(`Queried article list`)
     })
     .catch(error => {
       console.log(error)

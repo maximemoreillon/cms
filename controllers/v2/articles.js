@@ -282,8 +282,8 @@ exports.get_article_list = (req, res) => {
 
     const sorting = () => {
 
-      let sorting = 'authorship.edition_date'
-      const sorting_lookup = {date : 'authorship.edition_date', title: 'article.title', views: 'article.views'}
+      let sorting = 'authorship.creation_date'
+      const sorting_lookup = {date : 'authorship.creation_date', title: 'article.title', views: 'article.views'}
 
       if(req.query.sort) {
         if(sorting_lookup[req.query.sort]) sorting = sorting_lookup[req.query.sort]

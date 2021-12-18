@@ -9,7 +9,8 @@ const author_controller = require('../../controllers/v3/authors.js')
 const comment_controller = require('../../controllers/v3/comments.js')
 
 const router = Router()
-const auth_options_strict = { url: `${process.env.AUTHENTICATION_API_URL}/v3/whoami` }
+// const auth_options_strict = { url: `${process.env.AUTHENTICATION_API_URL}/v3/whoami` }
+const auth_options_strict = { url: `${process.env.IDENTIFICATION_URL}` }
 const auth_options_lax = { ...auth_options_strict, lax: true }
 
 

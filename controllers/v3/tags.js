@@ -1,6 +1,10 @@
 const {driver} = require('../../db.js')
 const return_user_id = require('../../identification.js')
 
+const {
+  current_user_is_admin
+} = require('../../utils.js')
+
 function get_tag_id(req) {
   return req.params.tag_id
     ?? req.query.tad_id
@@ -71,7 +75,7 @@ exports.update_tag = (req, res) => {
 
   // TODO: Use JOY to contrain properties
 
-  if(!res.locals.user.properties.isAdmin) return res.status(403).send('Only an administrator can perform this operation')
+  if(!current_user_is_admin(res)) return res.status(403).send('Only an administrator can perform this operation')
 
   const session = driver.session()
 
@@ -101,7 +105,7 @@ exports.update_tag = (req, res) => {
 exports.delete_tag = (req, res) => {
   // Route to delete a single tag
 
-  if(!res.locals.user.properties.isAdmin) return res.status(403).send('Only an administrator can perform this operation')
+  if(!current_user_is_admin(res)) return res.status(403).send('Only an administrator can perform this operation')
 
   let tag_id = get_tag_id(req)
 

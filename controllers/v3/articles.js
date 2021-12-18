@@ -87,7 +87,7 @@ exports.create_article = (req, res) => {
     article,
     tag_ids = []
   } = req.body
-  
+
   if(!article) {
     return res.status(400).send(`Missing article in request body`)
   }

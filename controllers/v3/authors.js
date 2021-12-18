@@ -27,11 +27,11 @@ exports.get_author = (req, res) => {
     `, {
     author_id,
   })
-  .then( ({recrds}) => {
+  .then( ({records}) => {
 
     if(!records.length) throw {code: 404, message: `Author ${author_id} not found`}
     const author = records[0].get('author')
-    delete author.properties.password_hashed
+    delete author.password_hashed
     res.send(author)
 
    })
@@ -63,7 +63,7 @@ exports.get_article_author = (req, res) => {
   }
 
   session.run(query,params)
-  .then( ({recrds}) => {
+  .then( ({records}) => {
 
     if(!records.length) throw {code: 404, message: `Article ${article_id} not found`}
     const author = records[0].get('author')

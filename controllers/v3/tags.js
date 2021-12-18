@@ -22,11 +22,16 @@ exports.get_tag = (req, res) => {
   .run(`
     MATCH (tag:Tag)
     WHERE tag._id = $tag_id
-    RETURN tag
+    RETURN properties(tag) as tag
     `, {
     tag_id,
   })
-  .then(result => { res.send(result.records[0].get('tag')) })
+  .then( ({records}) => {
+    if(!records.length) throw `Tag ${tag_id} not found`
+    const tag = records[0].get('tag')
+    console.log(`Tag ${tag_id} queried`)
+    res.send(tag)
+   })
   .catch(error => {
     console.log(error)
     res.status(500).send(`Error getting tag: ${error}`)
@@ -175,6 +180,8 @@ exports.get_pinned_tags = (req, res) => {
 
 exports.get_article_tags = (req, res) => {
   // Route to get tags of a given article
+
+  // Is this actuall yused?
 
   const article_id = req.query.id
     ?? req.params.article_id

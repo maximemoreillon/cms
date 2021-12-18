@@ -1,6 +1,6 @@
 const {driver} = require('../../db.js')
 const get_current_user_id = require('../../identification.js')
-
+const {error_handling} = require('../../utils.js')
 
 const get_article_id = (req) => {
 
@@ -14,23 +14,20 @@ exports.get_article = (req, res) => {
   // Route to get a single article using its ID
 
   const article_id = get_article_id(req)
+  if(!article_id) return res.status(400).send(`Missing article ID`)
 
-  if(!article_id) {
-    return res.status(400).send(`Missing article ID`)
-  }
+  const current_user_id = get_current_user_id(res)
 
-  const session = driver.session()
-  session
-  .run(`
+  const query = `
     // Match article by ID
     MATCH (article:Article)
-    WHERE id(article) = toInteger($article_id)
+    WHERE article._id = $article_id
 
     // Show only published articles or articles written by current user
     WITH article
     MATCH (article)-[authorship:WRITTEN_BY]->(author:User)
     WHERE article.published = true
-      ${res.locals.user ? 'OR id(author)=toInteger($current_user_id)' : ''}
+      ${res.locals.user ? 'OR author._id = $current_user_id' : ''}
 
     // Update view count
     SET article.views = coalesce(article.views, 0) + 1
@@ -41,30 +38,37 @@ exports.get_article = (req, res) => {
     OPTIONAL MATCH (tag:Tag)-[:APPLIED_TO]->(article)
 
     // Tags is an array
-    RETURN article, author, authorship, collect(tag) as tags
-    `, {
-    current_user_id: get_current_user_id(res),
-    article_id,
-  })
+    RETURN
+      properties(article) as article,
+      properties(author) as author,
+      properties(authorship) as authorship,
+      collect(properties(tag)) as tags
+    `
+
+  const params = { current_user_id, article_id }
+
+  const session = driver.session()
+  session.run(query,params)
   .then(({records}) => {
-    if (records.length < 1) {
-      console.log(`Article ${article_id} not found`)
-      return res.status(404).send(`Article ${article_id} not found`)
-    }
+
+    if (!records.length) throw {code: 404, message: `Article ${article_id} not found`}
+
     const record = records[0]
+
+    // remove password_hashed
+    const author = record.get('author')
+    delete author.password_hashed
+
     const article = {
       ...record.get('article'),
-      author: record.get('author'),
+      author,
       authorship: record.get('authorship'),
       tags: record.get('tags')
     }
     res.send(article)
     console.log(`Article ${article_id} queried`)
   })
-  .catch(error => {
-    console.log(error)
-    res.status(500).send(`Error getting article: ${error}`)
-  })
+  .catch(error => { error_handling(error, res) })
   .finally(() => { session.close() })
 
 }
@@ -79,27 +83,29 @@ exports.create_article = (req, res) => {
     return res.status(403).send(`This action is restricted to authenticated users`)
   }
 
-  const article_properties = req.body.article
-  if(!article_properties) {
+  const {
+    article,
+    tag_ids = []
+  } = req.body
+  
+  if(!article) {
     return res.status(400).send(`Missing article in request body`)
   }
 
-  const tag_ids = req.body.tag_ids || []
 
-  var session = driver.session()
-  session
-  .run(`
+  const query = `
     // create the article node
     CREATE (article:Article)
 
-    // Set properties
-    SET article = $article.properties
+    // Set initial properties
+    SET article = $article
     SET article.views = 0
+    SET article._id = randomUUID()
 
     // Add relationship to author
     WITH article
     MATCH (author:User)
-    WHERE id(author)=toInteger($author_id)
+    WHERE author._id = $author_id
     MERGE (article)-[authorship:WRITTEN_BY]->(author)
 
     // Save dates in the relationship
@@ -118,27 +124,31 @@ exports.create_article = (req, res) => {
       END AS tag_id
 
     OPTIONAL MATCH (tag:Tag)
-    WHERE id(tag) = toInteger(tag_id)
+    WHERE tag._id = tag_id
     WITH collect(tag) as tags, article
     FOREACH(tag IN tags | MERGE (article)<-[:APPLIED_TO]-(tag))
 
     // Return the article
-    RETURN article
+    RETURN properties(article) AS article
+    `
 
-    `, {
-      author_id: current_user_id,
-      article: article_properties,
-      tag_ids: tag_ids,
-  })
+  const params = {
+    author_id: current_user_id,
+    article,
+    tag_ids,
+  }
+
+  const session = driver.session()
+  session.run(query, params)
   .then( ({records}) => {
+
+    if(!records.length) throw {code: 400, message: `Article could not be created`}
     const article = records[0].get('article')
+    console.log(`Article ${article._id} created`)
     res.send(article)
-    console.log(`Article ${article.identity} created`)
+
   })
-  .catch(error => {
-    console.log(error)
-    res.status(500).send(`Error creating article: ${error}`)
-  })
+  .catch(error => { error_handling(error, res) })
   .finally(() => { session.close() })
 }
 
@@ -160,14 +170,13 @@ exports.update_article = (req, res) => {
     || req.body.properties
     || req.body.article.properties
 
+  // POTENTIALLY JUST BODY
 
-  const session = driver.session()
-  session
-  .run(`
+  const query = `
     // Find the article node and update it
     MATCH (article:Article)-[rel:WRITTEN_BY]->(author:User)
-    WHERE id(article) = toInteger($article_id)
-      AND id(author)=toInteger($author_id)
+    WHERE article._id = $article_id
+      AND author._id = $author_id
 
     // Remove previously set properties
     REMOVE article.thumbnail_src
@@ -198,18 +207,23 @@ exports.update_article = (req, res) => {
       END AS tag_id
 
     OPTIONAL MATCH (tag:Tag)
-    WHERE id(tag) = toInteger(tag_id)
+    WHERE tag._id = tag_id
     WITH collect(tag) as tags, article
     FOREACH(tag IN tags | MERGE (article)<-[:APPLIED_TO]-(tag))
 
     // Return the article
-    RETURN article
-    `, {
-      author_id: current_user_id,
-      article_id,
-      article_properties,
-      tag_ids: req.body.tag_ids,
-  })
+    RETURN properties(article) AS article
+    `
+
+  const params = {
+    author_id: current_user_id,
+    article_id,
+    article_properties,
+    tag_ids: req.body.tag_ids,
+  }
+
+  const session = driver.session()
+  session.run(query, params)
   .then( ({records}) => {
 
     if(!records.length ) {
@@ -240,12 +254,12 @@ exports.delete_article = (req, res) => {
     return res.status(400).send(`Missing article ID`)
   }
 
-  var session = driver.session()
-  session
-  .run(`
+  const session = driver.session()
+
+  const query = `
     MATCH (article:Article)-[:WRITTEN_BY]->(author:User)
-    WHERE id(article) = toInteger($article_id)
-      AND id(author)=toInteger($author_id)
+    WHERE article._id = $article_id
+      AND author._id = $author_id
 
     // Deal with comments
     WITH article
@@ -254,25 +268,25 @@ exports.delete_article = (req, res) => {
 
     // Delete article itself
     DETACH DELETE article
-    RETURN 'success'
-    `, {
+    RETURN $article_id as article_id
+    `
+
+  const params = {
     author_id: current_user_id,
     article_id,
-  })
-  .then(result => {
+  }
 
-    if(result.records.length === 0 ) {
-      return res.status(400).send(`Article could not be deleted, probably due to insufficient permissions`)
-    }
+  session.run(query,params)
+  .then( ({records}) => {
+
+    if(!records.length) throw {code: 400, message: `Article could not be deleted, probably due to insufficient permissions`}
+
 
     console.log(`Article ${article_id} deleted`)
-    res.send("Article deleted successfully")
+    res.send({article_id})
 
   })
-  .catch(error => {
-    console.log(error)
-    res.status(500).send(`Error deleting article: ${error}`)
-  })
+  .catch(error => {error_handling(error, res)})
   .finally(() => { session.close() })
 }
 
@@ -280,23 +294,35 @@ exports.delete_article = (req, res) => {
 exports.get_article_list = (req, res) => {
     // Route to get multiple articles
 
+    const current_user = res.locals.user
+    const current_user_id = get_current_user_id(res)
+
+    const {
+      author_id,
+      tag_id,
+      search,
+      sort,
+      order = 'DESC',
+      start_index = 0,
+      batch_size = 10,
+    } = req.query
+
+
     const sorting = () => {
+
 
       let sorting = 'authorship.creation_date'
       const sorting_lookup = {date : 'authorship.creation_date', title: 'article.title', views: 'article.views'}
 
-      if(req.query.sort) {
-        if(sorting_lookup[req.query.sort]) sorting = sorting_lookup[req.query.sort]
-      }
+      if(sort && sorting_lookup[sort]) sorting = sorting_lookup[sort]
 
       return sorting
     }
 
 
     const batching = () => {
-      const batch_size = req.query.batch_size ? 'toInteger($batch_size)' : '10'
-      const start_index = req.query.start_index ? 'toInteger($start_index)' : '0'
-      return `WITH article_count, article_collection[${start_index}..${start_index}+${batch_size}] AS articles`
+      return `WITH article_count,
+        article_collection[toInteger(${start_index})..toInteger(${start_index})+toInteger(${batch_size})] AS articles`
     }
 
 
@@ -307,56 +333,63 @@ exports.get_article_list = (req, res) => {
 
       // Show only published articles or articles written by user
       WHERE article.published = true
-      ${res.locals.user ? `OR id(author)=toInteger($current_user_id)` : ``}
+      ${current_user ? `OR author._id = $current_user_id` : ``}
 
       // Using search bar to find matching titles
       WITH article
-      ${req.query.search ?  `WHERE toLower(article.title) CONTAINS toLower($search)` : ``}
+      ${search ?  `WHERE toLower(article.title) CONTAINS toLower($search)` : ``}
 
       // Filter by tag if provided
       WITH article
-      ${req.query.tag_id ? 'MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE id(tag) = toInteger($tag_id)' : ''}
+      ${tag_id ? 'MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE tag._id = $tag_id' : ''}
 
       // Filter by user if provided
       WITH article
-      ${req.query.author_id ? 'MATCH (author:User)<-[WRITTEN_BY]-(article) WHERE id(author) = toInteger($author_id)' : ''}
+      ${author_id ? 'MATCH (author:User)<-[WRITTEN_BY]-(article) WHERE author._id = $author_id' : ''}
 
-      // Sorting and ordering
-      // Can sort by views, date or title (alphabetically)
+      // Get tags
       WITH article
       OPTIONAL MATCH (tag:Tag)-[:APPLIED_TO]->(article)
 
-      WITH article, COLLECT(tag) AS  tags
-
+      // Author
+      WITH article, COLLECT(properties(tag)) AS  tags
       MATCH (article)-[authorship:WRITTEN_BY]->(author:User)
+
+      // Sorting and ordering
+      // Can sort by views, date or title (alphabetically)
       WITH article, authorship, author, tags
-      ORDER BY ${sorting()} ${req.query.order === 'ASC' ? 'ASC' : 'DESC'}
+      ORDER BY ${sorting()} ${order === 'ASC' ? 'ASC' : 'DESC'}
 
 
 
       // Collect everything for count and batching
-      WITH COUNT(article) AS article_count,
-        COLLECT({article: article, tags: tags, author: author, authorship: authorship}) AS article_collection
+      WITH COUNT(DISTINCT(article)) AS article_count,
+        COLLECT({
+          article: properties(article),
+          author: properties(author),
+          authorship: properties(authorship),
+          tags: tags
+        }) AS article_collection
 
       // Return only articles by batch
       ${batching()}
-
-
-
 
       // Return articles
       RETURN article_count, articles
       `
 
+    //
+
+
     const params = {
-        current_user_id: get_current_user_id(res),
-        author_id: req.query.author_id,
-        tag_id: req.query.tag_id,
-        search: req.query.search,
-        sorting: req.query.sort,
-        order: req.query.order,
-        start_index: req.query.start_index,
-        batch_size: req.query.batch_size,
+        current_user_id,
+        author_id,
+        tag_id,
+        search,
+        sort,
+        order,
+        start_index,
+        batch_size,
       }
 
 
@@ -364,6 +397,8 @@ exports.get_article_list = (req, res) => {
     const session = driver.session()
     session.run(query , params)
     .then(({records}) => {
+
+      // TODO: remove user password!
 
       const output = {
         article_count: records[0].get('article_count'),
@@ -374,6 +409,12 @@ exports.get_article_list = (req, res) => {
           tags: a.tags,
         })),
       }
+
+      output.articles.forEach((article) => {
+        delete article.author.password_hashed
+      })
+
+
 
       res.send(output)
       console.log(`Queried article list`)

@@ -1,36 +1,101 @@
 stages:
-  - containerization
+  - build
+  - test
   - deploy
 
 variables:
   APPLICATION_NAME: cms
-  DOCKER_IMAGE: ${DOCKER_HUB_USERNAME}/${APPLICATION_NAME}
-  CERTIFICATE_DOMAIN: api.cms.maximemoreillon.com
+  CONTAINER_REGISTRY: ${DOCKER_HUB_USERNAME}
+  CONTAINER_IMAGE: ${CONTAINER_REGISTRY}/${APPLICATION_NAME}
+  CONTAINER_IMAGE_TEST: ${CONTAINER_IMAGE}:test
+  CONTAINER_IMAGE_LATEST: ${CONTAINER_IMAGE}:latest
+  CONTAINER_IMAGE_TAGGED: ${CONTAINER_IMAGE}:${CI_COMMIT_SHORT_SHA}
+  K8S_INGRESS_DOMAIN: api.cms.maximemoreillon.com
 
-containerization:
-  stage: containerization
+# Needed for Docker in docker build
+services:
+  - name: docker:19.03.12-dind
+
+build:
+  stage: build
   tags:
-    - moreillon
-  script:
+    - dind
+  before_script:
     # Docker hub login
     - echo "${DOCKER_HUB_PASSWORD}" | docker login --username ${DOCKER_HUB_USERNAME} --password-stdin
-    # Building the container image
-    - docker build -t ${DOCKER_IMAGE} .
-    # Pushing the image to the registry
-    - docker push ${DOCKER_IMAGE}
-    # Cleanup
-    - docker image rm ${DOCKER_IMAGE}
+  script:
+    - echo {\"commit\":\"${CI_COMMIT_SHORT_SHA}\"} > commit.json
+    - docker build -t ${CONTAINER_IMAGE_TEST} .
+    - docker push ${CONTAINER_IMAGE_TEST}
 
-deployment:
+test:
+  stage: test
+  tags:
+    - dind
+
+  before_script:
+    # Docker hub login
+    - >
+      echo "${DOCKER_HUB_PASSWORD}" |
+      docker login
+      --username ${DOCKER_HUB_USERNAME}
+      --password-stdin
+    # Creating network for TDD
+    - docker network create tdd-network
+    - >
+      docker run
+      -d
+      --rm
+      --name tdd-db
+      --network tdd-network
+      --hostname tdd-db
+      --env NEO4J_AUTH=none
+      neo4j:3.5-community
+    - sleep 100 # Wait for Neo4J to become available
+    # Deploy a user-manager / authentication system
+    # This is mainly so that an admin account is created
+    - >
+      docker run
+      -d
+      --rm
+      --name tdd-user-manager
+      --network tdd
+      --hostname tdd-user-manager
+      --env NEO4J_URL=bolt://tdd-db
+      --env JWT_SECRET=keyboardcat
+      moreillon/user-manager
+
+
+  script:
+    - >
+      docker run
+      --rm
+      --name tdd-app
+      --network tdd-network
+      --env NEO4J_URL=bolt://tdd-db
+      --env IDENTIFICATION_URL=http://tdd-user-manager/users/self
+      --env LOGIN_URL=http://tdd-user-manager/auth/login
+      --env TEST_USER_USERNAME=admin
+      --env TEST_USER_PASSWORD=admin
+      ${CONTAINER_IMAGE_TEST}
+      npm run coverage
+    # If pass, then push the images
+    - docker tag ${CONTAINER_IMAGE_TEST} ${CONTAINER_IMAGE_TAGGED}
+    - docker tag ${CONTAINER_IMAGE_TEST} ${CONTAINER_IMAGE_LATEST}
+    # Pushing
+    - docker push ${CONTAINER_IMAGE_TAGGED}
+    - docker push ${CONTAINER_IMAGE_LATEST}
+
+deploy:
   stage: deploy
   tags:
     - moreillon
+  only:
+    - master
   script:
-    # create/update the deployment
     - envsubst < kubernetes_manifest.yml | kubectl apply -f -
-    # Pull latest image of deployment
     - kubectl rollout restart deployment/${APPLICATION_NAME}
   environment:
     name: production
     kubernetes:
-      namespace: ${KUBERNETES_NAMESPACE} # KUBERNETES_NAMESPACE provided by GitLab
+      namespace: ${KUBERNETES_NAMESPACE}

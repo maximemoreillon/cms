@@ -1,4 +1,4 @@
-const driver = require('../../db_config.js')
+const {driver} = require('../../db.js')
 const get_current_user_id = require('../../identification.js')
 
 

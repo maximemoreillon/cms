@@ -1,4 +1,8 @@
 module.exports =  (res) => {
-  return res.locals.user?.identity?.low
-    ?? res.locals.user?.identity
+
+  const current_user = res.locals.user
+  return current_user._id
+    ?? current_user.properties._id
+    ?? current_user.identity.low
+    ?? current_user.identity
 }

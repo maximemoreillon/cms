@@ -17,6 +17,7 @@ router.route('/pinned')
 router.route('/:tag_id')
   .get(controller.get_tag)
   .put(auth.authenticate, controller.update_tag)
+  .patch(auth.authenticate, controller.update_tag)
   .delete(auth.authenticate, controller.delete_tag)
 
 

@@ -59,7 +59,7 @@ test:
       -d
       --rm
       --name tdd-user-manager
-      --network tdd
+      --network tdd-network
       --hostname tdd-user-manager
       --env NEO4J_URL=bolt://tdd-db
       --env JWT_SECRET=keyboardcat

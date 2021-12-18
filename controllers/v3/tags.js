@@ -33,22 +33,28 @@ exports.get_tag = (req, res) => {
 exports.create_tag = (req, res) => {
   // Route to create a single tag
 
-  const tag_name = req.body.tag_name
+  const {name} = req.body
+
+  if(!name) return res.status(400).send(`name not defined`)
 
   var session = driver.session()
-  session
-  .run(`
-    MERGE (tag:Tag {name:$tag_name})
+
+  const query = `
+    MERGE (tag:Tag {name:$name})
     ON CREATE SET tag._id = randomUUID()
-    RETURN tag
-    `, {
-    tag_name,
-  })
+    RETURN properties(tag) as tag
+    `
+
+  const params = {name}
+  session
+  .run(query,params)
   .then(({records}) => {
+
     if(!records.length) throw 'Tag creation failed'
-    console.log(`Tag ${tag_name} created`)
+    console.log(`Tag ${name} merged`)
     const tag = records[0].get('tag')
     res.send(tag)
+
   })
   .catch(error => {
     console.log(error)
@@ -60,24 +66,30 @@ exports.create_tag = (req, res) => {
 exports.update_tag = (req, res) => {
   // Route to update a single tag using
 
-  let tag_id = get_tag_id(req)
+  const tag_id = get_tag_id(req)
+  const properties = req.body
+
+  // TODO: Use JOY to contrain properties
 
   if(!res.locals.user.properties.isAdmin) return res.status(403).send('Only an administrator can perform this operation')
 
-  var session = driver.session()
-  session
-  .run(`
+  const session = driver.session()
+
+  const query = `
     MATCH (tag:Tag)
     WHERE tag._id = $tag_id
     SET tag += $properties
-    RETURN tag
-    `, {
-      tag_id,
-      properties: req.body.properties,
-  })
-  .then(result => {
+    RETURN properties(tag) as tag
+    `
+
+  const params = { tag_id, properties }
+
+  session.run(query,params)
+  .then( ({records}) => {
+    if(!records.length) throw `Update of tag ${tag_id} failed`
+    const tag = records[0].get('tag')
     console.log(`Tag ${tag_id} updated`)
-    res.send(result.records)
+    res.send(tag)
   })
   .catch(error => {
     console.log(error)
@@ -99,10 +111,12 @@ exports.delete_tag = (req, res) => {
     MATCH (tag:Tag)
     WHERE tag._id = $tag_id
     DETACH DELETE tag
+    RETURN $tag_id as tag_id
     `, {
     tag_id,
   })
-  .then(result => {
+  .then( ({records}) => {
+    if(!records.length) throw `Deletion of tag ${tag_id} failed`
     console.log(`Tag ${tag_id} deleted`)
     res.send("Tag deleted successfully")
    })
@@ -120,10 +134,13 @@ exports.get_tag_list = (req, res) => {
   session
   .run(`
     MATCH (tag:Tag)
-    RETURN tag
+    RETURN properties(tag) as tag
     `)
   .then( ({records}) => {
+
+    console.log(`Tag list queried`)
     res.send(records.map(record => record.get('tag')))
+
   })
   .catch(error => {
     console.log(error)

@@ -1,4 +1,9 @@
 # CMS
+
+
+[![pipeline status](https://gitlab.com/moreillon_k8s/cms/cms_back/badges/master/pipeline.svg)](https://gitlab.com/moreillon_k8s/cms/cms_back/-/commits/master)
+[![coverage report](https://gitlab.com/moreillon_k8s/cms/cms_back/badges/master/coverage.svg)](https://gitlab.com/moreillon_k8s/cms/cms_back/-/commits/master)
+
 A Simple CMS built built using Neo4J, Express and TipTap
 
 Project page: https://articles.maximemoreillon.com/articles/112
@@ -14,7 +19,6 @@ Project page: https://articles.maximemoreillon.com/articles/112
 | /articles/{article ID} | PUT | Coming soon | Updates a single article |
 | /articles/{article ID} | DELETE | - | Deletes a single article |
 | /articles/{article ID}/tags | GET | - | Get the tags of an article |
-| /articles/{article ID}/comments | GET | - | Get the comments of an article |
 | /articles/{article ID}/author | GET | - | Get the author of an article |
 
 ### Tags

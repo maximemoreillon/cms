@@ -11,7 +11,8 @@ const {
 
 const router = Router()
 
-const auth_options_strict = { url: `${process.env.IDENTIFICATION_URL}` }
+const auth_options_strict = { url: `${process.env.AUTHENTICATION_API_URL}/v3/whoami` }
+//const auth_options_strict = { url: `${process.env.IDENTIFICATION_URL}` }
 
 
 router.route('/')

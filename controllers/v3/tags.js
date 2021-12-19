@@ -139,10 +139,17 @@ exports.delete_tag = (req, res) => {
 exports.get_tag_list = (req, res) => {
   // Route to get all tags
 
+  const {
+    pinned
+  } = req.query
+
+  const pinned_query = pinned ? `WHERE tag.navigation_item = true` : ``
+
   var session = driver.session()
   session
   .run(`
     MATCH (tag:Tag)
+    ${pinned_query}
     RETURN properties(tag) as tag
     `)
   .then( ({records}) => {
@@ -158,25 +165,6 @@ exports.get_tag_list = (req, res) => {
   .finally(() => { session.close() })
 }
 
-exports.get_pinned_tags = (req, res) => {
-  // Route to get navbar items
-
-  // TODO: Combine with above
-
-
-  var session = driver.session()
-  session
-  .run(`
-    MATCH (tag:Tag {navigation_item: true})
-    RETURN tag
-    `)
-  .then(result => { res.send(result.records) })
-  .catch(error => {
-    console.log(error)
-    res.status(500).send(`Error getting navigation items: ${error}`)
-  })
-  .finally(() => { session.close() })
-}
 
 exports.get_article_tags = (req, res) => {
   // Route to get tags of a given article

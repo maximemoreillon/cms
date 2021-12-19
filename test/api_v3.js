@@ -83,7 +83,7 @@ describe("/v3/", () => {
   describe("POST /v3/articles", () => {
     it("Should allow the creation of an article", async () => {
 
-      const article = {title: 'tdd'}
+      const article = {title: 'tdd', published: true}
       const {status, body} = await request(app)
         .post("/v3/articles")
         .send({...article, tag_ids: [tag_id]})
@@ -101,6 +101,14 @@ describe("/v3/", () => {
       const {status, body} = await request(app)
         .get(`/v3/articles`)
         .set('Authorization', `Bearer ${jwt}`)
+
+      expect(status).to.equal(200)
+    })
+
+    it("Should allow the anonymous query of articles", async () => {
+
+      const {status, body} = await request(app)
+        .get(`/v3/articles`)
 
       expect(status).to.equal(200)
     })

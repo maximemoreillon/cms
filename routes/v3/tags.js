@@ -11,9 +11,9 @@ const {
 
 const router = Router()
 
-const auth_options_strict = { url: `${process.env.AUTHENTICATION_API_URL}/v3/whoami` }
-//const auth_options_strict = { url: `${process.env.IDENTIFICATION_URL}` }
-
+let auth_options_strict
+if(process.env.IDENTIFICATION_URL) auth_options_strict = { url: `${process.env.IDENTIFICATION_URL}` }
+else auth_options_strict = { url: `${process.env.AUTHENTICATION_API_URL}/v3/whoami` }
 
 router.route('/')
   .get(get_tag_list)

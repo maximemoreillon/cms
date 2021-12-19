@@ -83,7 +83,7 @@ describe("/v3/", () => {
   describe("POST /v3/articles", () => {
     it("Should allow the creation of an article", async () => {
 
-      const article = {title: 'tdd', published: true}
+      const article = {title: 'tdd', published: false}
       const {status, body} = await request(app)
         .post("/v3/articles")
         .send({...article, tag_ids: [tag_id]})
@@ -123,6 +123,14 @@ describe("/v3/", () => {
 
       expect(status).to.equal(200)
     })
+
+    it("Should prevent the anonymous query of a private article", async () => {
+
+      const {status, body} = await request(app)
+        .get(`/v3/articles/${article_id}`)
+
+      expect(status).to.not.equal(200)
+    })
   })
 
   describe("GET /v3/articles/:article_id/author", () => {
@@ -141,10 +149,21 @@ describe("/v3/", () => {
 
       const {status, body} = await request(app)
         .patch(`/v3/articles/${article_id}`)
-        .send({title: 'tdd-edited'})
+        .send({published: true})
         .set('Authorization', `Bearer ${jwt}`)
 
       article_id = body._id
+
+      expect(status).to.equal(200)
+    })
+  })
+
+  describe("GET /v3/articles/:article_id", () => {
+
+    it("Should allow the anonymous query of a public article", async () => {
+
+      const {status, body} = await request(app)
+        .get(`/v3/articles/${article_id}`)
 
       expect(status).to.equal(200)
     })

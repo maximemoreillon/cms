@@ -117,6 +117,17 @@ describe("/v3/", () => {
     })
   })
 
+  describe("GET /v3/articles/:article_id/author", () => {
+    it("Should allow the query of the author of an article", async () => {
+
+      const {status, body} = await request(app)
+        .get(`/v3/articles/${article_id}/author`)
+        .set('Authorization', `Bearer ${jwt}`)
+
+      expect(status).to.equal(200)
+    })
+  })
+
   describe("PATCH /v3/articles/:article_id", () => {
     it("Should allow the update of an article", async () => {
 

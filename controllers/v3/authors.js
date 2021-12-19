@@ -20,13 +20,14 @@ exports.get_author = (req, res) => {
 
   // Route to get an author using his ID
   const session = driver.session()
-  session.run(`
+
+  const query = `
     MATCH (author:User)
     WHERE author._id = $author_id
     RETURN properties(author) as author
-    `, {
-    author_id,
-  })
+    `
+
+  session.run(query, { author_id })
   .then( ({records}) => {
 
     if(!records.length) throw {code: 404, message: `Author ${author_id} not found`}
@@ -42,7 +43,10 @@ exports.get_author = (req, res) => {
 exports.get_article_author = (req, res) => {
   // Route to get author of a given article
 
+  // Is this even used?
+
   const {article_id} = req.params
+  const current_user_id = return_user_id(res)
 
   const session = driver.session()
 
@@ -58,7 +62,7 @@ exports.get_article_author = (req, res) => {
     `
 
   const params = {
-    current_user_id: return_user_id(res),
+    current_user_id,
     article_id
   }
 
@@ -67,7 +71,7 @@ exports.get_article_author = (req, res) => {
 
     if(!records.length) throw {code: 404, message: `Article ${article_id} not found`}
     const author = records[0].get('author')
-    delete author.properties.password_hashed
+    delete author.password_hashed
     res.send(author)
 
    })

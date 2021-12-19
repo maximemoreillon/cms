@@ -86,7 +86,7 @@ describe("/v3/", () => {
       const article = {title: 'tdd'}
       const {status, body} = await request(app)
         .post("/v3/articles")
-        .send({article, tag_ids: [tag_id]})
+        .send({...article, tag_ids: [tag_id]})
         .set('Authorization', `Bearer ${jwt}`)
 
       article_id = body._id
@@ -111,6 +111,18 @@ describe("/v3/", () => {
 
       const {status, body} = await request(app)
         .get(`/v3/articles/${article_id}`)
+        .set('Authorization', `Bearer ${jwt}`)
+
+      expect(status).to.equal(200)
+    })
+  })
+
+  describe("PATCH /v3/articles/:article_id", () => {
+    it("Should allow the update of an article", async () => {
+
+      const {status, body} = await request(app)
+        .patch(`/v3/articles/${article_id}`)
+        .send({title: 'tdd-edited'})
         .set('Authorization', `Bearer ${jwt}`)
 
       article_id = body._id

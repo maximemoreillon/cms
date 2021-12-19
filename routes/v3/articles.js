@@ -21,6 +21,7 @@ router.route('/')
 router.route('/:article_id')
   .get(auth(auth_options_lax), article_controller.get_article)
   .put(auth(auth_options_strict), article_controller.update_article)
+  .patch(auth(auth_options_strict), article_controller.update_article)
   .delete(auth(auth_options_strict), article_controller.delete_article)
 
 router.route('/:article_id/tags')

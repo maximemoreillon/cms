@@ -59,14 +59,27 @@ exports.get_article = (req, res) => {
     const author = record.get('author')
     delete author.password_hashed
 
-    const article = {
+    // Respond with tags, author as part of the article or separately?
+    // GET Article to respond {article,author,tags} or {_id,content,...,author,tags}?
+
+    // This is more natural for the client
+    // But makes it a pain for updates
+    const reponse = {
       ...record.get('article'),
-      author,
       authorship: record.get('authorship'),
-      tags: record.get('tags')
+      tags: record.get('tags'),
+      author,
     }
-    res.send(article)
+
+    // const reponse = {
+    //   article: record.get('article'),
+    //   authorship: record.get('authorship'),
+    //   tags: record.get('tags'),
+    //   author,
+    // }
+
     console.log(`Article ${article_id} queried`)
+    res.send(reponse)
   })
   .catch(error => { error_handling(error, res) })
   .finally(() => { session.close() })
@@ -83,10 +96,20 @@ exports.create_article = (req, res) => {
     return res.status(403).send(`This action is restricted to authenticated users`)
   }
 
+  // destructure to handle article node and tag nodes separatel;y
   const {
-    article,
-    tag_ids = []
+    tag_ids = [],
+    ...article
   } = req.body
+
+  const {
+    title,
+    published,
+    summary,
+    content
+  } = article
+
+
 
   if(!article) {
     return res.status(400).send(`Missing article in request body`)
@@ -134,7 +157,7 @@ exports.create_article = (req, res) => {
 
   const params = {
     author_id: current_user_id,
-    article,
+    article: { title, published, summary, content },
     tag_ids,
   }
 
@@ -165,12 +188,18 @@ exports.update_article = (req, res) => {
     return res.status(400).send(`Missing article ID`)
   }
 
-  // Not using the body directly because tag IDs is also provided
-  const article_properties = req.body.article_properties
-    || req.body.properties
-    || req.body.article.properties
+  const {
+    tag_ids = [],
+    ...article
+  } = req.body
 
-  // POTENTIALLY JUST BODY
+  const {
+    title,
+    published,
+    summary,
+    content
+  } = article
+
 
   const query = `
     // Find the article node and update it
@@ -185,7 +214,7 @@ exports.update_article = (req, res) => {
 
     // Set the new properties
     // Might be better with a +=
-    SET article += $article_properties
+    SET article += $article
 
     // Update the edition date
     SET rel.edition_date = date()
@@ -216,28 +245,23 @@ exports.update_article = (req, res) => {
     `
 
   const params = {
-    author_id: current_user_id,
     article_id,
-    article_properties,
-    tag_ids: req.body.tag_ids,
+    article: { title, published, summary, content },
+    author_id: current_user_id,
+    tag_ids,
   }
 
   const session = driver.session()
   session.run(query, params)
   .then( ({records}) => {
 
-    if(!records.length ) {
-      return res.status(400).send(`Article could not be updated, probably due to insufficient permissions`)
-    }
+    if(!records.length ) throw {code: 404, message: `Article ${article_id} not found`}
 
     console.log(`Article ${article_id} updated`)
     res.send(records[0].get('article'))
   })
 
-  .catch(error => {
-    console.log(error)
-    res.status(500).send(`Error updating article: ${error}`)
-  })
+  .catch(error => { error_handling(error,res) })
   .finally(() => { session.close() })
 
 }
@@ -409,6 +433,16 @@ exports.get_article_list = (req, res) => {
           tags: a.tags,
         })),
       }
+
+      // const output = {
+      //   article_count: records[0].get('article_count'),
+      //   articles: records[0].get('articles').map(a => ({
+      //     article: a.article,
+      //     author: a.author,
+      //     authorship: a.authorship,
+      //     tags: a.tags,
+      //   })),
+      // }
 
       output.articles.forEach((article) => {
         delete article.author.password_hashed

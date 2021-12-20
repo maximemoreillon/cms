@@ -33,10 +33,8 @@ app.get('/', (req, res) => {
   })
 })
 
-// app.use('/', require('./routes/v1/index.js'))
-// app.use('/v1', require('./routes/v1/index.js'))
-// app.use('/v2', require('./routes/v2/index.js'))
-app.use('/v3', require('./routes/v3/index.js'))
+app.use('/', require('./routes/v1/index.js'))
+app.use('/v1', require('./routes/v1/index.js'))
 
 app.listen(port, () => console.log(`CMS listening on port ${port}`))
 

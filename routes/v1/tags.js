@@ -1,23 +1,30 @@
-const express = require('express')
-const auth = require('@moreillon/authentication_middleware')
+const {Router} = require('express')
+const auth = require('@moreillon/express_identification_middleware')
 
-const controller = require('../../controllers/v1/tags.js')
+const {
+  get_tag_list,
+  get_tag,
+  create_tag,
+  update_tag,
+  delete_tag,
+} = require('../../controllers/v1/tags.js')
 
-const router = express.Router()
+const router = Router()
 
-
+let auth_options_strict
+if(process.env.IDENTIFICATION_URL) auth_options_strict = { url: `${process.env.IDENTIFICATION_URL}` }
+else auth_options_strict = { url: `${process.env.AUTHENTICATION_API_URL}/v3/whoami` }
 
 router.route('/')
-  .get(controller.get_tag_list)
-  .post(auth.authenticate, controller.create_tag)
+  .get(get_tag_list)
+  .post(auth(auth_options_strict), create_tag)
 
-router.route('/pinned')
-  .get(controller.get_pinned_tags)
 
 router.route('/:tag_id')
-  .get(controller.get_tag)
-  .put(auth.authenticate, controller.update_tag)
-  .delete(auth.authenticate, controller.delete_tag)
+  .get(get_tag)
+  .put(auth(auth_options_strict), update_tag)
+  .patch(auth(auth_options_strict), update_tag)
+  .delete(auth(auth_options_strict), delete_tag)
 
 
 

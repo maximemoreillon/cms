@@ -1,5 +1,6 @@
 const {driver} = require('../../db.js')
 const return_user_id = require('../../identification.js')
+const {error_handling} = require('../../utils.js')
 
 function get_author_id(req) {
   return req.query.author_id
@@ -18,43 +19,63 @@ exports.get_author = (req, res) => {
   const author_id = get_author_id(req)
 
   // Route to get an author using his ID
-  var session = driver.session()
-  session
-  .run(`
+  const session = driver.session()
+
+  const query = `
     MATCH (author:User)
-    WHERE id(author) = toInteger($author_id)
-    RETURN author
-    `, {
-    author_id: author_id,
-  })
-  .then(result => { res.send(result.records[0].get('author')) })
-  .catch(error => { res.status(500).send(`Error getting author: ${error}`) })
+    WHERE author._id = $author_id
+    RETURN properties(author) as author
+    `
+
+  session.run(query, { author_id })
+  .then( ({records}) => {
+
+    if(!records.length) throw {code: 404, message: `Author ${author_id} not found`}
+    const author = records[0].get('author')
+    delete author.password_hashed
+    res.send(author)
+
+   })
+  .catch(error => { error_handling(error, res) })
   .finally( () => { session.close() })
 }
 
 exports.get_article_author = (req, res) => {
   // Route to get author of a given article
 
-  const article_id = get_article_id(req)
+  // Is this even used?
 
-  var session = driver.session()
-  session
-  .run(`
+  const {article_id} = req.params
+  const current_user_id = return_user_id(res)
+
+  const session = driver.session()
+
+  const query = `
     MATCH (author:User)<-[:WRITTEN_BY]-(article:Article)
-    WHERE id(article) = toInteger($article_id)
+    WHERE article._id = $article_id
 
-    // NOT SURE IF FILTERING WORKS
     WITH author, article
     WHERE article.published = true
-    ${res.locals.user ? 'OR id(author)=toInteger($current_user_id)' : ''}
+    ${res.locals.user ? 'OR author._id = $current_user_id' : ''}
 
-    RETURN author
-    `, {
-      current_user_id: return_user_id(res),
-      article_id: article_id
-    })
-  .then(result => { res.send(result.records) })
-  .catch(error => { res.status(500).send(`Error getting author: ${error}`) })
+    RETURN properties(author) as author
+    `
+
+  const params = {
+    current_user_id,
+    article_id
+  }
+
+  session.run(query,params)
+  .then( ({records}) => {
+
+    if(!records.length) throw {code: 404, message: `Article ${article_id} not found`}
+    const author = records[0].get('author')
+    delete author.password_hashed
+    res.send(author)
+
+   })
+  .catch(error => { error_handling(error, res) })
   .finally(() => { session.close() })
 
 }

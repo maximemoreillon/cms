@@ -9,12 +9,14 @@ exports.create_comment = (req, res) => {
   .run(`
     // Find article node
     MATCH (article:Article)
-    WHERE id(article) = toInteger($article_id)
+    WHERE article._id = $article_id
 
     // Create comment
     CREATE (comment:Comment)-[:ABOUT]->(article)
     SET comment = $comment.properties
     SET comment.date = date()
+    SET comment._id = randomUUID()
+
 
     RETURN comment
     `, {
@@ -39,12 +41,12 @@ exports.delete_comment = (req, res) => {
   .run(`
     // Find the comment
     MATCH (comment:Comment)
-    WHERE id(comment) = toInteger($comment_id)
+    WHERE comment._id = $comment_id
 
     // Match the user requesting
     WITH comment
     MATCH (user:User)
-    WHERE id(user)=toInteger({user_id})
+    WHERE user._id = $user_id
       AND ( (comment)-[:ABOUT]->(:Article)-[:WRITTEN_BY]->(user:User)
         OR user.isAdmin )
 
@@ -75,11 +77,11 @@ exports.get_article_comments = (req, res) => {
   session
   .run(`
     MATCH (comment:Comment)-[:ABOUT]->(article:Article)
-    WHERE id(article) = toInteger($article_id)
+    WHERE article._id = $article_id
 
     WITH comment, article
     MATCH (article)-[:WRITTEN_BY]->(author:User)
-    WHERE article.published = true  ${res.locals.user ? 'OR id(author)=toInteger({current_user_id})' : ''}
+    WHERE article.published = true  ${res.locals.user ? 'OR author._id = $current_user_id' : ''}
 
     RETURN comment
     `, {

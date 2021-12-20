@@ -28,7 +28,7 @@ const whoami = async (jwt) => {
 
 
 // We will test for api users
-describe("/v3/", () => {
+describe("/v1/", () => {
 
   let user, jwt, article_id, tag_id
 
@@ -40,12 +40,12 @@ describe("/v3/", () => {
 
   })
 
-  describe("POST /v3/tags", () => {
+  describe("POST /v1/tags", () => {
     it("Should allow the creation of a tag", async () => {
 
       const tag = {name: 'tdd'}
       const {status, body} = await request(app)
-        .post("/v3/tags")
+        .post("/v1/tags")
         .send(tag)
         .set('Authorization', `Bearer ${jwt}`)
 
@@ -55,11 +55,11 @@ describe("/v3/", () => {
     })
   })
 
-  describe("GET /v3/tags", () => {
+  describe("GET /v1/tags", () => {
     it("Should allow the query of tags", async () => {
 
       const {status, body} = await request(app)
-        .get("/v3/tags")
+        .get("/v1/tags")
         .set('Authorization', `Bearer ${jwt}`)
 
       expect(status).to.equal(200)
@@ -67,12 +67,12 @@ describe("/v3/", () => {
     })
   })
 
-  describe("PATCH /v3/tags", () => {
+  describe("PATCH /v1/tags", () => {
     it("Should allow the update of a tag", async () => {
 
       const properties = {name: 'tdd_updated'}
       const {status, body} = await request(app)
-        .patch(`/v3/tags/${tag_id}`)
+        .patch(`/v1/tags/${tag_id}`)
         .send(properties)
         .set('Authorization', `Bearer ${jwt}`)
 
@@ -80,12 +80,12 @@ describe("/v3/", () => {
     })
   })
 
-  describe("POST /v3/articles", () => {
+  describe("POST /v1/articles", () => {
     it("Should allow the creation of an article", async () => {
 
       const article = {title: 'tdd', published: false}
       const {status, body} = await request(app)
-        .post("/v3/articles")
+        .post("/v1/articles")
         .send({...article, tag_ids: [tag_id]})
         .set('Authorization', `Bearer ${jwt}`)
 
@@ -95,11 +95,11 @@ describe("/v3/", () => {
     })
   })
 
-  describe("GET /v3/articles/", () => {
+  describe("GET /v1/articles/", () => {
     it("Should allow the query of articles", async () => {
 
       const {status, body} = await request(app)
-        .get(`/v3/articles`)
+        .get(`/v1/articles`)
         .set('Authorization', `Bearer ${jwt}`)
 
       expect(status).to.equal(200)
@@ -108,17 +108,17 @@ describe("/v3/", () => {
     it("Should allow the anonymous query of articles", async () => {
 
       const {status, body} = await request(app)
-        .get(`/v3/articles`)
+        .get(`/v1/articles`)
 
       expect(status).to.equal(200)
     })
   })
 
-  describe("GET /v3/articles/:article_id", () => {
+  describe("GET /v1/articles/:article_id", () => {
     it("Should allow the query of an article", async () => {
 
       const {status, body} = await request(app)
-        .get(`/v3/articles/${article_id}`)
+        .get(`/v1/articles/${article_id}`)
         .set('Authorization', `Bearer ${jwt}`)
 
       expect(status).to.equal(200)
@@ -127,28 +127,28 @@ describe("/v3/", () => {
     it("Should prevent the anonymous query of a private article", async () => {
 
       const {status, body} = await request(app)
-        .get(`/v3/articles/${article_id}`)
+        .get(`/v1/articles/${article_id}`)
 
       expect(status).to.not.equal(200)
     })
   })
 
-  describe("GET /v3/articles/:article_id/author", () => {
+  describe("GET /v1/articles/:article_id/author", () => {
     it("Should allow the query of the author of an article", async () => {
 
       const {status, body} = await request(app)
-        .get(`/v3/articles/${article_id}/author`)
+        .get(`/v1/articles/${article_id}/author`)
         .set('Authorization', `Bearer ${jwt}`)
 
       expect(status).to.equal(200)
     })
   })
 
-  describe("PATCH /v3/articles/:article_id", () => {
+  describe("PATCH /v1/articles/:article_id", () => {
     it("Should allow the update of an article", async () => {
 
       const {status, body} = await request(app)
-        .patch(`/v3/articles/${article_id}`)
+        .patch(`/v1/articles/${article_id}`)
         .send({published: true})
         .set('Authorization', `Bearer ${jwt}`)
 
@@ -158,22 +158,22 @@ describe("/v3/", () => {
     })
   })
 
-  describe("GET /v3/articles/:article_id", () => {
+  describe("GET /v1/articles/:article_id", () => {
 
     it("Should allow the anonymous query of a public article", async () => {
 
       const {status, body} = await request(app)
-        .get(`/v3/articles/${article_id}`)
+        .get(`/v1/articles/${article_id}`)
 
       expect(status).to.equal(200)
     })
   })
 
-  describe("DELETE /v3/articles/:article_id", () => {
+  describe("DELETE /v1/articles/:article_id", () => {
     it("Should allow the deletion of an article", async () => {
 
       const {status, body} = await request(app)
-        .delete(`/v3/articles/${article_id}`)
+        .delete(`/v1/articles/${article_id}`)
         .set('Authorization', `Bearer ${jwt}`)
 
       article_id = body._id
@@ -182,11 +182,11 @@ describe("/v3/", () => {
     })
   })
 
-  describe("DELETE /v3/tags", () => {
+  describe("DELETE /v1/tags", () => {
     it("Should allow the deletion of a tag", async () => {
 
       const {status, body} = await request(app)
-        .delete(`/v3/tags/${tag_id}`)
+        .delete(`/v1/tags/${tag_id}`)
         .set('Authorization', `Bearer ${jwt}`)
 
       expect(status).to.equal(200)

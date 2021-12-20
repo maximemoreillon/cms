@@ -13,6 +13,7 @@ variables:
   K8S_INGRESS_DOMAIN: api.cms.maximemoreillon.com
 
 # Needed for Docker in docker build
+image: moreillon/ci-dind
 services:
   - name: docker:19.03.12-dind
 
@@ -89,7 +90,7 @@ test:
 deploy:
   stage: deploy
   tags:
-    - moreillon
+    - dind
   only:
     - master
   script:

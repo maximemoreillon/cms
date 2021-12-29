@@ -193,12 +193,15 @@ exports.update_article = (req, res) => {
     ...article
   } = req.body
 
+  // why destructure article?
   const {
     title,
     published,
     summary,
-    content
+    content,
+    thumbnail_src
   } = article
+
 
 
   const query = `
@@ -244,9 +247,10 @@ exports.update_article = (req, res) => {
     RETURN properties(article) AS article
     `
 
+  // why restructure article?
   const params = {
     article_id,
-    article: { title, published, summary, content },
+    article: { title, published, summary, content, thumbnail_src },
     author_id: current_user_id,
     tag_ids,
   }

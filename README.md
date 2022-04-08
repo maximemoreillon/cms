@@ -4,7 +4,9 @@
 [![pipeline status](https://gitlab.com/moreillon_k8s/cms/cms_back/badges/master/pipeline.svg)](https://gitlab.com/moreillon_k8s/cms/cms_back/-/commits/master)
 [![coverage report](https://gitlab.com/moreillon_k8s/cms/cms_back/badges/master/coverage.svg)](https://gitlab.com/moreillon_k8s/cms/cms_back/-/commits/master)
 
-A Simple CMS built built using Neo4J, Express and TipTap
+A Simple CMS built using Neo4J and Express. It manages article and their tags as nodes of adirected graph.
+
+![This is an image](https://myoctocat.com/assets/images/base-octocat.svg)
 
 Project page: https://articles.maximemoreillon.com/articles/112
 

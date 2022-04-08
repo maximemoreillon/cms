@@ -4,7 +4,7 @@
 [![pipeline status](https://gitlab.com/moreillon_k8s/cms/cms_back/badges/master/pipeline.svg)](https://gitlab.com/moreillon_k8s/cms/cms_back/-/commits/master)
 [![coverage report](https://gitlab.com/moreillon_k8s/cms/cms_back/badges/master/coverage.svg)](https://gitlab.com/moreillon_k8s/cms/cms_back/-/commits/master)
 
-A Simple CMS built using Neo4J and Express. It manages article and their tags as nodes of adirected graph.
+A Simple CMS built using Neo4J and Express. It manages article and their tags as nodes of a directed graph.
 
 ![Graph](./docs/5e78587f5e7feee8596e5740.png)
 

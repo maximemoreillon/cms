@@ -6,7 +6,7 @@
 
 A Simple CMS built using Neo4J and Express. It manages article and their tags as nodes of adirected graph.
 
-![This is an image](https://myoctocat.com/assets/images/base-octocat.svg)
+![Graph](./docs/5e78587f5e7feee8596e5740.png)
 
 Project page: https://articles.maximemoreillon.com/articles/112
 

@@ -167,7 +167,7 @@ exports.create_article = (req, res, next) => {
   .finally(() => { session.close() })
 }
 
-exports.update_article = (req, res) => {
+exports.update_article = (req, res, next) => {
   // Route to update an article
 
   const current_user_id = get_current_user_id(res)

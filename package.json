@@ -9,7 +9,7 @@
   },
   "keywords": [],
   "author": "Maxime MOREILLON",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "@moreillon/authentication_middleware": "^1.0.9",
     "@moreillon/express_identification_middleware": "^1.1.0",

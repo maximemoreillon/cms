@@ -3,7 +3,7 @@ const path = require('path')
 const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')
-const dotenv = require('dotenv')
+const {version, author} = require('dotenv')
 const pjson = require('./package.json')
 const {
   url: neo4j_url,
@@ -25,8 +25,8 @@ app.use(cors())
 app.get('/', (req, res) => {
   res.send({
     application_name: 'CMS',
-    author: 'Maxime MOREILLON',
-    version: pjson.version,
+    author,
+    version,
     neo4j_url,
 
     authentication_api_url: process.env.AUTHENTICATION_API_URL,

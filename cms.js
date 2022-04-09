@@ -28,7 +28,6 @@ app.get('/', (req, res) => {
     author,
     version,
     neo4j_url,
-
     authentication_api_url: process.env.AUTHENTICATION_API_URL,
     identification_url: process.env.IDENTIFICATION_URL,
   })

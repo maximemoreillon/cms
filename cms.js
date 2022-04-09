@@ -28,7 +28,7 @@ app.get('/', (req, res) => {
     author: 'Maxime MOREILLON',
     version: pjson.version,
     neo4j_url,
-    
+
     authentication_api_url: process.env.AUTHENTICATION_API_URL,
     identification_url: process.env.IDENTIFICATION_URL,
   })
@@ -36,6 +36,14 @@ app.get('/', (req, res) => {
 
 app.use('/', require('./routes/v1/index.js'))
 app.use('/v1', require('./routes/v1/index.js'))
+
+// Express error handler
+app.use((error, req, res, next) => {
+  console.error(error)
+  let { statusCode = 500, message = error } = error
+  if(isNaN(statusCode) || statusCode > 600) statusCode = 500
+  res.status(statusCode).send(message)
+})
 
 app.listen(port, () => console.log(`CMS listening on port ${port}`))
 

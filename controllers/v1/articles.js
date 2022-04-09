@@ -154,9 +154,9 @@ exports.create_article = (req, res, next) => {
   session.run(query, params)
   .then( ({records}) => {
 
-    if(!article) throw createHttpError(500, `Article could not be created`)
 
     const article = records[0].get('article')
+    if(!article) throw createHttpError(500, `Article could not be created`)
     console.log(`Article ${article._id} created`)
     res.send(article)
 

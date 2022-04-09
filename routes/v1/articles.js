@@ -27,8 +27,8 @@ router.route('/:article_id')
   .patch(auth(auth_options_strict), article_controller.update_article)
   .delete(auth(auth_options_strict), article_controller.delete_article)
 
-router.route('/:article_id/tags')
-  .get(auth(auth_options_strict), tag_controller.get_article_tags)
+// router.route('/:article_id/tags')
+//   .get(auth(auth_options_strict), tag_controller.get_article_tags)
 
 router.route('/:article_id/author')
   .get(auth(auth_options_strict), author_controller.get_article_author)

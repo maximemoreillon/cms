@@ -1,10 +1,11 @@
 const {driver} = require('../../db.js')
 const return_user_id = require('../../identification.js')
+const createHttpError = require('http-errors')
 
-exports.create_comment = (req, res) => {
+exports.create_comment = (req, res, next) => {
   // Route to create a comment
   // TODO: Prevent commenting on unpublished articles
-  var session = driver.session()
+  const session = driver.session()
   session
   .run(`
     // Find article node
@@ -27,14 +28,11 @@ exports.create_comment = (req, res) => {
     console.log(`Comment created`)
     res.send(result.records)
    })
-  .catch(error => {
-    console.log(error)
-    res.status(500).send(`Error creating comment: ${error}`)
-  })
+  .catch(next)
   .finally(() => { session.close() })
 }
 
-exports.delete_comment = (req, res) => {
+exports.delete_comment = (req, res, next) => {
   // Route to delete a comment
   var session = driver.session()
   session
@@ -60,14 +58,11 @@ exports.delete_comment = (req, res) => {
     if(result.records.length === 0 ) return res.status(400).send(`Comment could not be deleted, probably due to insufficient permissions`)
     res.send("Comment deleted successfully")
   })
-  .catch(error => {
-    console.log(error)
-    res.status(500).send(`Error deleting comment: ${error}`)
-  })
+  .catch(next)
   .finally(() => { session.close() })
 }
 
-exports.get_article_comments = (req, res) => {
+exports.get_article_comments = (req, res, next) => {
   // Route to get comments of a given article
 
   let article_id = req.query.id
@@ -89,10 +84,7 @@ exports.get_article_comments = (req, res) => {
       article_id: article_id,
     })
   .then(result => { res.send(result.records) })
-  .catch(error => {
-    console.log(error)
-    res.status(500).send(`Error getting comments: ${error}`)
-  })
+  .catch(next)
   .finally(() => { session.close() })
 
 }

@@ -1,6 +1,6 @@
 const {driver} = require('../../db.js')
 const return_user_id = require('../../identification.js')
-const {error_handling} = require('../../utils.js')
+const createHttpError = require('http-errors')
 
 function get_author_id(req) {
   return req.query.author_id
@@ -14,7 +14,7 @@ const get_article_id = (req) => {
 }
 
 
-exports.get_author = (req, res) => {
+exports.get_author = (req, res, next) => {
 
   const author_id = get_author_id(req)
 
@@ -30,17 +30,17 @@ exports.get_author = (req, res) => {
   session.run(query, { author_id })
   .then( ({records}) => {
 
-    if(!records.length) throw {code: 404, message: `Author ${author_id} not found`}
+    if(!records.length) throw createHttpError(404,`Author ${author_id} not found`)
     const author = records[0].get('author')
     delete author.password_hashed
     res.send(author)
 
    })
-  .catch(error => { error_handling(error, res) })
+  .catch(next)
   .finally( () => { session.close() })
 }
 
-exports.get_article_author = (req, res) => {
+exports.get_article_author = (req, res, next) => {
   // Route to get author of a given article
 
   // Is this even used?
@@ -69,13 +69,13 @@ exports.get_article_author = (req, res) => {
   session.run(query,params)
   .then( ({records}) => {
 
-    if(!records.length) throw {code: 404, message: `Article ${article_id} not found`}
+    if(!records.length ) throw createHttpError(404, `Article ${article_id} not found`)
     const author = records[0].get('author')
     delete author.password_hashed
     res.send(author)
 
    })
-  .catch(error => { error_handling(error, res) })
-  .finally(() => { session.close() })
+   .catch(next)
+   .finally(() => { session.close() })
 
 }

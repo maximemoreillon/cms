@@ -1,5 +1,6 @@
 const {driver} = require('../../db.js')
 const return_user_id = require('../../identification.js')
+const createHttpError = require('http-errors')
 
 const {
   current_user_is_admin
@@ -12,7 +13,7 @@ function get_tag_id(req) {
 
 }
 
-exports.get_tag = (req, res) => {
+exports.get_tag = (req, res, next) => {
   // Route to get a single tag using its ID
 
   const tag_id = get_tag_id(req)
@@ -27,24 +28,21 @@ exports.get_tag = (req, res) => {
     tag_id,
   })
   .then( ({records}) => {
-    if(!records.length) throw `Tag ${tag_id} not found`
+    if(!records.length ) throw createHttpError(404, `Tag ${tag_id} not found`)
     const tag = records[0].get('tag')
     console.log(`Tag ${tag_id} queried`)
     res.send(tag)
    })
-  .catch(error => {
-    console.log(error)
-    res.status(500).send(`Error getting tag: ${error}`)
-  })
+  .catch(next)
   .finally(() => { session.close() })
 }
 
-exports.create_tag = (req, res) => {
+exports.create_tag = (req, res, next) => {
   // Route to create a single tag
 
   const {name} = req.body
 
-  if(!name) return res.status(400).send(`name not defined`)
+  if(!name) throw createHttpError(400, `Missing name `)
 
   var session = driver.session()
 
@@ -59,20 +57,17 @@ exports.create_tag = (req, res) => {
   .run(query,params)
   .then(({records}) => {
 
-    if(!records.length) throw 'Tag creation failed'
-    console.log(`Tag ${name} merged`)
+    if(!records.length) throw createHttpError(500, `Tag creation failed`)
+    console.log(`Tag ${name} created`)
     const tag = records[0].get('tag')
     res.send(tag)
 
   })
-  .catch(error => {
-    console.log(error)
-    res.status(500).send(`Error creating tag: ${error}`)
-   })
+  .catch(next)
   .finally(() => { session.close() })
 }
 
-exports.update_tag = (req, res) => {
+exports.update_tag = (req, res, next) => {
   // Route to update a single tag using
 
   const tag_id = get_tag_id(req)
@@ -80,7 +75,7 @@ exports.update_tag = (req, res) => {
 
   // TODO: Use JOY to contrain properties
 
-  if(!current_user_is_admin(res)) return res.status(403).send('Only an administrator can perform this operation')
+  if(!current_user_is_admin(res)) throw createHttpError(403, `This action is restricted to administrators`)
 
   const session = driver.session()
 
@@ -95,22 +90,19 @@ exports.update_tag = (req, res) => {
 
   session.run(query,params)
   .then( ({records}) => {
-    if(!records.length) throw `Update of tag ${tag_id} failed`
+    if(!records.length) throw createHttpError(500, `Tag update failed`)
     const tag = records[0].get('tag')
     console.log(`Tag ${tag_id} updated`)
     res.send(tag)
   })
-  .catch(error => {
-    console.log(error)
-    res.status(500).send(`Error updating tag: ${error}`)
-  })
+  .catch(next)
   .finally(() => { session.close() })
 }
 
-exports.delete_tag = (req, res) => {
+exports.delete_tag = (req, res, next) => {
   // Route to delete a single tag
 
-  if(!current_user_is_admin(res)) return res.status(403).send('Only an administrator can perform this operation')
+  if(!current_user_is_admin(res)) throw createHttpError(403, `This action is restricted to administrators`)
 
   let tag_id = get_tag_id(req)
 
@@ -125,18 +117,15 @@ exports.delete_tag = (req, res) => {
     tag_id,
   })
   .then( ({records}) => {
-    if(!records.length) throw `Deletion of tag ${tag_id} failed`
+    if(!records.length) throw createHttpError(500, `Tag deletion failed`)
     console.log(`Tag ${tag_id} deleted`)
     res.send("Tag deleted successfully")
    })
-  .catch(error => {
-    console.error(error)
-    res.status(500).send(`Error deleting tag: ${error}`)
-  })
+  .catch(next)
   .finally(() => { session.close() })
 }
 
-exports.get_tag_list = (req, res) => {
+exports.get_tag_list = (req, res, next) => {
   // Route to get all tags
 
   const {
@@ -158,43 +147,35 @@ exports.get_tag_list = (req, res) => {
     res.send(records.map(record => record.get('tag')))
 
   })
-  .catch(error => {
-    console.log(error)
-    res.status(500).send(`Error getting tag list: ${error}`)
-   })
+  .catch(next)
   .finally(() => { session.close() })
 }
 
 
-exports.get_article_tags = (req, res) => {
-  // Route to get tags of a given article
-
-  // Is this actuall yused?
-
-  const article_id = req.query.id
-    ?? req.params.article_id
-
-  var session = driver.session()
-  session
-  .run(`
-    MATCH (tag:Tag)-[:APPLIED_TO]->(article:Article)
-    WHERE article._id = $article_id
-
-    // NOT SURE IF FILTERING WORKS
-    WITH tag, article
-    MATCH (article)-[:WRITTEN_BY]->(author:User)
-    WHERE article.published = true
-    ${res.locals.user ? 'OR author._id = $current_user_id' : ''}
-
-    RETURN tag
-    `, {
-      current_user_id: return_user_id(res),
-      article_id
-    })
-  .then(result => { res.send(result.records) })
-  .catch(error => {
-    console.log(error)
-    res.status(500).send(`Error getting tags: ${error}`)
-  })
-  .finally(() => { session.close() })
-}
+// exports.get_article_tags = (req, res, next) => {
+//   // Route to get tags of a given article
+//
+//   const article_id = req.query.id
+//     ?? req.params.article_id
+//
+//   var session = driver.session()
+//   session
+//   .run(`
+//     MATCH (tag:Tag)-[:APPLIED_TO]->(article:Article)
+//     WHERE article._id = $article_id
+//
+//     // NOT SURE IF FILTERING WORKS
+//     WITH tag, article
+//     MATCH (article)-[:WRITTEN_BY]->(author:User)
+//     WHERE article.published = true
+//     ${res.locals.user ? 'OR author._id = $current_user_id' : ''}
+//
+//     RETURN tag
+//     `, {
+//       current_user_id: return_user_id(res),
+//       article_id
+//     })
+//   .then(result => { res.send(result.records) })
+//   .catch(next)
+//   .finally(() => { session.close() })
+// }

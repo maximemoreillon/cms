@@ -1,6 +1,6 @@
 const {driver} = require('../../db.js')
 const get_current_user_id = require('../../identification.js')
-const {error_handling} = require('../../utils.js')
+const createHttpError = require('http-errors')
 
 const get_article_id = (req) => {
 
@@ -10,7 +10,7 @@ const get_article_id = (req) => {
 
 }
 
-exports.get_article = (req, res) => {
+exports.get_article = (req, res, next) => {
   // Route to get a single article using its ID
 
   const article_id = get_article_id(req)
@@ -51,7 +51,7 @@ exports.get_article = (req, res) => {
   session.run(query,params)
   .then(({records}) => {
 
-    if (!records.length) throw {code: 404, message: `Article ${article_id} not found`}
+    if (!records.length) throw createHttpError(404, `Article ${article_id} not found`)
 
     const record = records[0]
 
@@ -71,36 +71,30 @@ exports.get_article = (req, res) => {
       author,
     }
 
-    // const reponse = {
-    //   article: record.get('article'),
-    //   authorship: record.get('authorship'),
-    //   tags: record.get('tags'),
-    //   author,
-    // }
-
     console.log(`Article ${article_id} queried`)
     res.send(reponse)
   })
-  .catch(error => { error_handling(error, res) })
+  .catch(next)
   .finally(() => { session.close() })
 
 }
 
 
 
-exports.create_article = (req, res) => {
+exports.create_article = (req, res, next) => {
   // Route to create an article
 
   const current_user_id = get_current_user_id(res)
-  if(!current_user_id) {
-    return res.status(403).send(`This action is restricted to authenticated users`)
-  }
+  if(!current_user_id) throw createHttpError(403, `This action is restricted to authenticated users`)
 
   // destructure to handle article node and tag nodes separatel;y
   const {
     tag_ids = [],
     ...article
   } = req.body
+
+  if(!article) throw createHttpError(400, `Missing article in request body`)
+
 
   const {
     title,
@@ -111,9 +105,6 @@ exports.create_article = (req, res) => {
 
 
 
-  if(!article) {
-    return res.status(400).send(`Missing article in request body`)
-  }
 
 
   const query = `
@@ -165,13 +156,14 @@ exports.create_article = (req, res) => {
   session.run(query, params)
   .then( ({records}) => {
 
-    if(!records.length) throw {code: 400, message: `Article could not be created`}
+    if(!article) throw createHttpError(500, `Article could not be created`)
+
     const article = records[0].get('article')
     console.log(`Article ${article._id} created`)
     res.send(article)
 
   })
-  .catch(error => { error_handling(error, res) })
+  .catch(next)
   .finally(() => { session.close() })
 }
 
@@ -179,14 +171,10 @@ exports.update_article = (req, res) => {
   // Route to update an article
 
   const current_user_id = get_current_user_id(res)
-  if(!current_user_id) {
-    return res.status(403).send(`This action is restricted to authenticated users`)
-  }
+  if(!current_user_id) throw createHttpError(403, `This action is restricted to authenticated users`)
 
   const article_id = get_article_id(req)
-  if(!article_id) {
-    return res.status(400).send(`Missing article ID`)
-  }
+  if(!article_id) throw createHttpError(400, `Missing article ID`)
 
   const {
     tag_ids = [],
@@ -259,28 +247,25 @@ exports.update_article = (req, res) => {
   session.run(query, params)
   .then( ({records}) => {
 
-    if(!records.length ) throw {code: 404, message: `Article ${article_id} not found`}
+    if(!records.length ) throw createHttpError(404, `Article ${article_id} not found`)
 
     console.log(`Article ${article_id} updated`)
     res.send(records[0].get('article'))
   })
-
-  .catch(error => { error_handling(error,res) })
+  .catch(next)
   .finally(() => { session.close() })
 
 }
 
-exports.delete_article = (req, res) => {
+exports.delete_article = (req, res, next) => {
 
   const current_user_id = get_current_user_id(res)
-  if(!current_user_id) {
-    return res.status(403).send(`This action is restricted to authenticated users`)
-  }
+  if(!current_user_id) throw createHttpError(403, `This action is restricted to authenticated users`)
+
 
   const article_id = req.params.article_id
-  if(!article_id) {
-    return res.status(400).send(`Missing article ID`)
-  }
+  if(!article_id) throw createHttpError(400, `Missing article ID`)
+
 
   const session = driver.session()
 
@@ -307,19 +292,17 @@ exports.delete_article = (req, res) => {
   session.run(query,params)
   .then( ({records}) => {
 
-    if(!records.length) throw {code: 400, message: `Article could not be deleted, probably due to insufficient permissions`}
-
-
+    if(!records.length) throw createHttpError(500,`Article deletion failed`)
     console.log(`Article ${article_id} deleted`)
     res.send({article_id})
 
   })
-  .catch(error => {error_handling(error, res)})
+  .catch(next)
   .finally(() => { session.close() })
 }
 
 
-exports.get_article_list = (req, res) => {
+exports.get_article_list = (req, res, next) => {
     // Route to get multiple articles
 
     const current_user = res.locals.user
@@ -426,7 +409,6 @@ exports.get_article_list = (req, res) => {
     session.run(query , params)
     .then(({records}) => {
 
-      // TODO: remove user password!
 
       const output = {
         article_count: records[0].get('article_count'),
@@ -438,16 +420,6 @@ exports.get_article_list = (req, res) => {
         })),
       }
 
-      // const output = {
-      //   article_count: records[0].get('article_count'),
-      //   articles: records[0].get('articles').map(a => ({
-      //     article: a.article,
-      //     author: a.author,
-      //     authorship: a.authorship,
-      //     tags: a.tags,
-      //   })),
-      // }
-
       output.articles.forEach((article) => {
         delete article.author.password_hashed
       })
@@ -457,9 +429,6 @@ exports.get_article_list = (req, res) => {
       res.send(output)
       console.log(`Queried article list`)
     })
-    .catch(error => {
-      console.log(error)
-      res.status(500).send(`Error getting articles: ${error}`)
-    })
+    .catch(next)
     .finally(() => { session.close() })
 }

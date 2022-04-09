@@ -14,7 +14,7 @@ exports.get_article = (req, res, next) => {
   // Route to get a single article using its ID
 
   const article_id = get_article_id(req)
-  if(!article_id) return res.status(400).send(`Missing article ID`)
+  if(!article_id) throw createHttpError(400, `Missing article ID`)
 
   const current_user_id = get_current_user_id(res)
 
@@ -93,9 +93,6 @@ exports.create_article = (req, res, next) => {
     ...article
   } = req.body
 
-  if(!article) throw createHttpError(400, `Missing article in request body`)
-
-
   const {
     title,
     published,
@@ -103,6 +100,7 @@ exports.create_article = (req, res, next) => {
     content
   } = article
 
+  if(!article) throw createHttpError(400, `Missing article in request body`)
 
 
 

@@ -3,8 +3,8 @@ const path = require('path')
 const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')
-const {version, author} = require('dotenv')
-const pjson = require('./package.json')
+const {version, author} = require('./package.json')
+const dotenv = require('dotenv')
 const {
   url: neo4j_url,
   connected: neo4j_connected,

@@ -10,7 +10,6 @@ variables:
   CONTAINER_IMAGE_TEST: ${CONTAINER_IMAGE}:test
   CONTAINER_IMAGE_LATEST: ${CONTAINER_IMAGE}:latest
   CONTAINER_IMAGE_TAGGED: ${CONTAINER_IMAGE}:${CI_COMMIT_SHORT_SHA}
-  K8S_INGRESS_DOMAIN: api.cms.maximemoreillon.com
 
 # Needed for Docker in docker build
 image: moreillon/ci-dind

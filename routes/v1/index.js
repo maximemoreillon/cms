@@ -1,6 +1,6 @@
-const express = require('express')
+const { Router } = require('express')
 
-const router = express.Router()
+const router = Router()
 
 router.use('/articles', require('./articles.js'))
 router.use('/tags', require('./tags.js'))

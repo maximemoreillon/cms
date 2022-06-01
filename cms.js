@@ -17,7 +17,11 @@ dotenv.config()
 
 db_init()
 
-const port = process.env.APP_PORT || 80
+const {
+  APP_PORT = 80,
+  AUTHENTICATION_API_URL,
+  IDENTIFICATION_URL,
+} = process.env
 
 const app = express()
 app.use(bodyParser.json({limit: '50mb', extended: true}))
@@ -29,9 +33,15 @@ app.get('/', (req, res) => {
     application_name: 'CMS',
     author,
     version,
-    neo4j_url,
-    authentication_api_url: process.env.AUTHENTICATION_API_URL,
-    identification_url: process.env.IDENTIFICATION_URL,
+    neo4j: {
+      url: neo4j_url,
+      connected: neo4j_connected
+    },
+    auth: {
+      authentication_api_url: AUTHENTICATION_API_URL,
+      identification_url: IDENTIFICATION_URL,
+    }
+    
   })
 })
 
@@ -46,6 +56,6 @@ app.use((error, req, res, next) => {
   res.status(statusCode).send(message)
 })
 
-app.listen(port, () => console.log(`CMS listening on port ${port}`))
+app.listen(APP_PORT, () => console.log(`CMS listening on port ${APP_PORT}`))
 
 exports.app = app

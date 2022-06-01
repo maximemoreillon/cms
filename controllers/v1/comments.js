@@ -1,5 +1,5 @@
 const {driver} = require('../../db.js')
-const return_user_id = require('../../identification.js')
+const { get_current_user_id } = require('../../utils.js')
 const createHttpError = require('http-errors')
 
 exports.create_comment = (req, res, next) => {
@@ -80,7 +80,7 @@ exports.get_article_comments = (req, res, next) => {
 
     RETURN comment
     `, {
-      current_user_id: return_user_id(res),
+      current_user_id: get_current_user_id(res),
       article_id: article_id,
     })
   .then(result => { res.send(result.records) })

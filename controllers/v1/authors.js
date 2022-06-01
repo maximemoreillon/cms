@@ -1,5 +1,5 @@
 const {driver} = require('../../db.js')
-const return_user_id = require('../../identification.js')
+const { get_current_user_id } = require('../../utils.js')
 const createHttpError = require('http-errors')
 
 function get_author_id(req) {
@@ -46,7 +46,7 @@ exports.get_article_author = (req, res, next) => {
   // Is this even used?
 
   const {article_id} = req.params
-  const current_user_id = return_user_id(res)
+  const current_user_id = get_current_user_id(res)
 
   const session = driver.session()
 

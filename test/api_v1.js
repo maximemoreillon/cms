@@ -1,6 +1,6 @@
 const request = require("supertest")
 const {expect} = require("chai")
-const {app} = require("../cms.js")
+const {app} = require("../index.js")
 const axios = require('axios')
 const dotenv = require('dotenv')
 

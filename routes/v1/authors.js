@@ -1,9 +1,10 @@
-const express = require('express')
-const auth = require('@moreillon/authentication_middleware')
+// THIS FILE MIGHT NOT BE USED
+
+const { Router } = require('express')
 
 const controller = require('../../controllers/v1/authors.js')
 
-const router = express.Router()
+const router = Router()
 
 
 

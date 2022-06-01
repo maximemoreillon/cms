@@ -1,5 +1,5 @@
 const {driver} = require('../../db.js')
-const return_user_id = require('../../identification.js')
+const { get_current_user_id } = require('../../utils.js')
 const createHttpError = require('http-errors')
 
 const {
@@ -172,7 +172,7 @@ exports.get_tag_list = (req, res, next) => {
 //
 //     RETURN tag
 //     `, {
-//       current_user_id: return_user_id(res),
+//       current_user_id: get_current_user_id(res),
 //       article_id
 //     })
 //   .then(result => { res.send(result.records) })

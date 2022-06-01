@@ -1,5 +1,5 @@
 const {driver} = require('../../db.js')
-const get_current_user_id = require('../../identification.js')
+const {get_current_user_id} = require('../../utils.js')
 const createHttpError = require('http-errors')
 
 const get_article_id = (req) => {

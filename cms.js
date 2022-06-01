@@ -2,9 +2,10 @@
 const path = require('path')
 const express = require('express')
 const cors = require('cors')
+const apiMetrics = require('prometheus-api-metrics')
 const bodyParser = require('body-parser')
-const {version, author} = require('./package.json')
 const dotenv = require('dotenv')
+const {version, author} = require('./package.json')
 const {
   url: neo4j_url,
   connected: neo4j_connected,
@@ -21,6 +22,7 @@ const port = process.env.APP_PORT || 80
 const app = express()
 app.use(bodyParser.json({limit: '50mb', extended: true}))
 app.use(cors())
+app.use(apiMetrics())
 
 app.get('/', (req, res) => {
   res.send({

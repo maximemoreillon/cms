@@ -3,7 +3,6 @@ const path = require('path')
 const express = require('express')
 const cors = require('cors')
 const apiMetrics = require('prometheus-api-metrics')
-const bodyParser = require('body-parser')
 const dotenv = require('dotenv')
 const {version, author} = require('./package.json')
 const {
@@ -24,7 +23,7 @@ const {
 } = process.env
 
 const app = express()
-app.use(bodyParser.json({limit: '50mb', extended: true}))
+app.use(express.json({limit: '50mb', extended: true}))
 app.use(cors())
 app.use(apiMetrics())
 

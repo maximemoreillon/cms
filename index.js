@@ -18,7 +18,6 @@ db_init()
 
 const {
   APP_PORT = 80,
-  AUTHENTICATION_API_URL,
   IDENTIFICATION_URL,
 } = process.env
 
@@ -37,7 +36,6 @@ app.get('/', (req, res) => {
       connected: neo4j_connected
     },
     auth: {
-      authentication_api_url: AUTHENTICATION_API_URL,
       identification_url: IDENTIFICATION_URL,
     }
     

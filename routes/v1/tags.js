@@ -9,14 +9,17 @@ const {
   delete_tag,
 } = require('../../controllers/v1/tags.js')
 
+const {
+  IDENTIFICATION_URL
+} = process.env
+
 const router = Router()
 
-let auth_options_strict
-if(process.env.IDENTIFICATION_URL) auth_options_strict = { url: `${process.env.IDENTIFICATION_URL}` }
-else auth_options_strict = { url: `${process.env.AUTHENTICATION_API_URL}/v3/whoami` }
+const auth_options_strict = IDENTIFICATION_URL ? { url: IDENTIFICATION_URL } : undefined
+const auth_options_lax = { ...auth_options_strict, lax: true }
 
 router.route('/')
-  .get(get_tag_list)
+  .get(auth(auth_options_lax),get_tag_list)
   .post(auth(auth_options_strict), create_tag)
 
 

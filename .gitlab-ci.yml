@@ -92,10 +92,8 @@ deploy:
     - dind
   only:
     - master
+  before_script:
+    - kubectl config use-context moreillon_ci/moreillon_k8s/kubernetes-agent:cloud
   script:
-    - envsubst < kubernetes_manifest.yml | kubectl apply -f -
-    - kubectl rollout restart deployment/${APPLICATION_NAME}
-  environment:
-    name: production
-    kubernetes:
-      namespace: ${KUBERNETES_NAMESPACE}
+    - envsubst < kubernetes_manifest.yml | kubectl apply -n ${KUBERNETES_NAMESPACE} -f -
+

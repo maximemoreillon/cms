@@ -32,7 +32,7 @@ test:
   stage: test
   tags:
     - dind
-
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
   before_script:
     # Docker hub login
     - >

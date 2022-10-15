@@ -1,5 +1,6 @@
 const {Router} = require('express')
 const auth = require('@moreillon/express_identification_middleware')
+const dotenv = require('dotenv')
 
 const {
   get_tag_list,
@@ -8,6 +9,8 @@ const {
   update_tag,
   delete_tag,
 } = require('../../controllers/v1/tags.js')
+
+dotenv.config()
 
 const {
   IDENTIFICATION_URL

@@ -1,8 +1,5 @@
-const express = require('express')
+const { Router } = require('express')
 const auth = require('@moreillon/express_identification_middleware')
-
-
-
 const {
   create_comment,
   delete_comment
@@ -12,7 +9,7 @@ const {
   IDENTIFICATION_URL
 } = process.env
 
-const router = express.Router()
+const router = Router()
 
 
 const auth_options_strict = IDENTIFICATION_URL ? { url: IDENTIFICATION_URL } : undefined

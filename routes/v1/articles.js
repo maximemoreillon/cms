@@ -1,11 +1,6 @@
-const {Router} = require('express')
-
 const auth = require('@moreillon/express_identification_middleware')
-
-const {
-  IDENTIFICATION_URL
-} = process.env
-
+const dotenv = require('dotenv')
+const {Router} = require('express')
 const {
   create_article,
   get_article_list,
@@ -13,12 +8,16 @@ const {
   update_article,
   delete_article
 } = require('../../controllers/v1/articles.js')
-
-
 const {
   get_article_author
 } = require('../../controllers/v1/authors.js')
 //const comment_controller = require('../../controllers/v1/comments.js')
+
+dotenv.config()
+
+const {
+  IDENTIFICATION_URL
+} = process.env
 
 const router = Router()
 

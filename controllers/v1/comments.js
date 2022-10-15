@@ -1,6 +1,6 @@
+const createHttpError = require('http-errors')
 const {driver} = require('../../db.js')
 const { get_current_user_id } = require('../../utils.js')
-const createHttpError = require('http-errors')
 
 exports.create_comment = (req, res, next) => {
   // Route to create a comment
@@ -55,7 +55,7 @@ exports.delete_comment = (req, res, next) => {
     comment_id: req.body.comment_id,
   })
   .then(result => {
-    if(result.records.length === 0 ) return res.status(400).send(`Comment could not be deleted, probably due to insufficient permissions`)
+    if (result.records.length === 0) throw createHttpError(400, `Comment could not be deleted, probably due to insufficient permissions`)
     res.send("Comment deleted successfully")
   })
   .catch(next)

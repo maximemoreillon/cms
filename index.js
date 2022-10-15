@@ -1,5 +1,4 @@
 // NPM modules
-const path = require('path')
 const express = require('express')
 const cors = require('cors')
 const apiMetrics = require('prometheus-api-metrics')
@@ -43,7 +42,7 @@ app.get('/', (req, res) => {
 })
 
 app.use('/', require('./routes/v1/index.js'))
-app.use('/v1', require('./routes/v1/index.js'))
+app.use('/v1', require('./routes/v1/index.js')) // alias
 
 // Express error handler
 app.use((error, req, res, next) => {

@@ -213,10 +213,7 @@ exports.get_article_list = (req, res, next) => {
         delete article.author.password_hashed
       })
 
-
-
       res.send(output)
-      console.log(`Queried article list`)
     })
     .catch(next)
     .finally(() => { session.close() })

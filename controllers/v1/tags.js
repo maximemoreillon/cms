@@ -143,8 +143,8 @@ exports.get_tag_list = (req, res, next) => {
     `)
   .then( ({records}) => {
 
-    console.log(`Tag list queried`)
-    res.send(records.map(record => record.get('tag')))
+    const tags = records.map(record => record.get('tag'))
+    res.send(tags)
 
   })
   .catch(next)

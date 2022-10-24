@@ -59,7 +59,7 @@ exports.get_tag_list = (req, res, next) => {
     ${pinned_query}
 
     WITH tag
-    MATCH (tag)-[:APPLIED_TO]->(article:Article)
+    OPTIONAL MATCH (tag)-[:APPLIED_TO]->(article:Article)
     WITH PROPERTIES(tag) as tag, size(collect(article)) as article_count
     RETURN tag, article_count
     `

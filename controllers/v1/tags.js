@@ -31,6 +31,7 @@ exports.create_tag = (req, res, next) => {
     `
 
   const params = {name}
+  
   session
   .run(query,params)
   .then(({records}) => {
@@ -83,14 +84,15 @@ exports.get_tag = (req, res, next) => {
   const tag_id = get_tag_id(req)
 
   const session = driver.session()
-  session
-    .run(`
+
+  const query = `
     MATCH (tag:Tag)
     WHERE tag._id = $tag_id
     RETURN properties(tag) as tag
-    `, {
-      tag_id,
-    })
+    `
+  
+  session
+    .run(query, { tag_id })
     .then(({ records }) => {
       if (!records.length) throw createHttpError(404, `Tag ${tag_id} not found`)
       const tag = records[0].get('tag')
@@ -138,18 +140,18 @@ exports.delete_tag = (req, res, next) => {
 
   if(!current_user_is_admin(res)) throw createHttpError(403, `This action is restricted to administrators`)
 
-  let tag_id = get_tag_id(req)
+  const tag_id = get_tag_id(req)
 
-  var session = driver.session()
-  session
-  .run(`
+  const session = driver.session()
+
+  const query = `
     MATCH (tag:Tag)
     WHERE tag._id = $tag_id
     DETACH DELETE tag
     RETURN $tag_id as tag_id
-    `, {
-    tag_id,
-  })
+    `
+
+  session.run(query, { tag_id })
   .then( ({records}) => {
     if(!records.length) throw createHttpError(500, `Tag deletion failed`)
     console.log(`Tag ${tag_id} deleted`)

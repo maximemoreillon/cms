@@ -13,29 +13,7 @@ function get_tag_id(req) {
 
 }
 
-exports.get_tag = (req, res, next) => {
-  // Route to get a single tag using its ID
 
-  const tag_id = get_tag_id(req)
-
-  var session = driver.session()
-  session
-  .run(`
-    MATCH (tag:Tag)
-    WHERE tag._id = $tag_id
-    RETURN properties(tag) as tag
-    `, {
-    tag_id,
-  })
-  .then( ({records}) => {
-    if(!records.length ) throw createHttpError(404, `Tag ${tag_id} not found`)
-    const tag = records[0].get('tag')
-    console.log(`Tag ${tag_id} queried`)
-    res.send(tag)
-   })
-  .catch(next)
-  .finally(() => { session.close() })
-}
 
 exports.create_tag = (req, res, next) => {
   // Route to create a single tag
@@ -65,6 +43,62 @@ exports.create_tag = (req, res, next) => {
   })
   .catch(next)
   .finally(() => { session.close() })
+}
+
+exports.get_tag_list = (req, res, next) => {
+  // Route to get all tags
+
+  const {
+    pinned
+  } = req.query
+
+  const pinned_query = pinned ? `WHERE tag.navigation_item = true` : ``
+
+  const query = `
+    MATCH (tag:Tag)
+    ${pinned_query}
+
+    WITH tag
+    MATCH (tag)-[:APPLIED_TO]->(article:Article)
+    WITH PROPERTIES(tag) as tag, size(collect(article)) as article_count
+    RETURN tag, article_count
+    `
+  
+
+  const session = driver.session()
+  session.run(query)
+    .then(({ records }) => {
+
+      const tags = records.map(r => ({ ...r.get('tag'), article_count: r.get('article_count') }))
+      res.send(tags)
+
+    })
+    .catch(next)
+    .finally(() => { session.close() })
+}
+
+exports.get_tag = (req, res, next) => {
+  // Route to get a single tag using its ID
+
+  const tag_id = get_tag_id(req)
+
+  const session = driver.session()
+  session
+    .run(`
+    MATCH (tag:Tag)
+    WHERE tag._id = $tag_id
+    RETURN properties(tag) as tag
+    `, {
+      tag_id,
+    })
+    .then(({ records }) => {
+      if (!records.length) throw createHttpError(404, `Tag ${tag_id} not found`)
+      const tag = records[0].get('tag')
+      console.log(`Tag ${tag_id} queried`)
+      res.send(tag)
+    })
+    .catch(next)
+    .finally(() => { session.close() })
 }
 
 exports.update_tag = (req, res, next) => {
@@ -125,31 +159,7 @@ exports.delete_tag = (req, res, next) => {
   .finally(() => { session.close() })
 }
 
-exports.get_tag_list = (req, res, next) => {
-  // Route to get all tags
 
-  const {
-    pinned
-  } = req.query
-
-  const pinned_query = pinned ? `WHERE tag.navigation_item = true` : ``
-
-  var session = driver.session()
-  session
-  .run(`
-    MATCH (tag:Tag)
-    ${pinned_query}
-    RETURN properties(tag) as tag
-    `)
-  .then( ({records}) => {
-
-    const tags = records.map(record => record.get('tag'))
-    res.send(tags)
-
-  })
-  .catch(next)
-  .finally(() => { session.close() })
-}
 
 
 // exports.get_article_tags = (req, res, next) => {

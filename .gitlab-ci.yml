@@ -50,7 +50,7 @@ test:
       --network tdd-network
       --hostname tdd-db
       --env NEO4J_AUTH=none
-      neo4j:3.5-community
+      neo4j:4.4-community
     - sleep 100 # Wait for Neo4J to become available
     # Deploy a user-manager / authentication system
     # This is mainly so that an admin account is created

@@ -228,6 +228,9 @@ exports.get_article = (req, res, next) => {
 
   const current_user_id = get_current_user_id(res)
 
+  // Increment view count only if not author
+  const viewCountIncrementQuery = `SET article.views = COALESCE(article.views, 0) + ${current_user_id ? 'TOINTEGER(author._id <> TOSTRING($current_user_id))' : '1' }`
+
   const query = `
     // Match article by ID
     MATCH (article:Article)
@@ -237,10 +240,10 @@ exports.get_article = (req, res, next) => {
     WITH article
     MATCH (article)-[authorship:WRITTEN_BY]->(author:User)
     WHERE article.published = true
-      ${res.locals.user ? 'OR author._id = $current_user_id' : ''}
+      ${current_user_id ? 'OR author._id = $current_user_id' : ''}
 
     // Update view count
-    SET article.views = coalesce(article.views, 0) + 1
+    ${viewCountIncrementQuery}
 
     // Get the tags of the article
     // OPTIONAL MATCH because some articles might not have a tag
@@ -266,23 +269,28 @@ exports.get_article = (req, res, next) => {
     const record = records[0]
 
     // remove password_hashed
+    const article = record.get('article')
     const author = record.get('author')
     delete author.password_hashed
+
+    console.log({views: article.views})
 
     // Respond with tags, author as part of the article or separately?
     // GET Article to respond {article,author,tags} or {_id,content,...,author,tags}?
 
     // This is more natural for the client
     // But makes it a pain for updates
-    const reponse = {
-      ...record.get('article'),
+    const response = {
+      ...article,
       authorship: record.get('authorship'),
       tags: record.get('tags'),
       author,
     }
 
+    console.o
+
     console.log(`Article ${article_id} queried`)
-    res.send(reponse)
+    res.send(response)
   })
   .catch(next)
   .finally(() => { session.close() })

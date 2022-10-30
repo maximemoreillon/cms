@@ -61,8 +61,9 @@ exports.get_tag_list = (req, res, next) => {
 
     WITH tag
     OPTIONAL MATCH (tag)-[:APPLIED_TO]->(article:Article)
-    WITH PROPERTIES(tag) as tag, size(collect(article)) as article_count
-    RETURN tag, article_count
+    RETURN 
+      PROPERTIES(tag) as tag,
+      SIZE(COLLECT(article)) as article_count
     `
   
 

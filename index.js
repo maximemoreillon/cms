@@ -1,4 +1,3 @@
-// NPM modules
 const express = require('express')
 const cors = require('cors')
 const apiMetrics = require('prometheus-api-metrics')

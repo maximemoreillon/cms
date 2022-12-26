@@ -1,8 +1,6 @@
 const {driver} = require('../../db.js')
 const createHttpError = require('http-errors')
-const {
-  current_user_is_admin
-} = require('../../utils.js')
+const { current_user_is_admin } = require('../../utils.js')
 
 const get_tag_id = ({query, params}) => params.tag_id || query.tad_id || query.id
 

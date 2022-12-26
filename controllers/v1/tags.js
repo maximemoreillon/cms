@@ -38,7 +38,7 @@ exports.create_tag = async (req, res, next) => {
 
 }
 
-exports.get_tag_list = async (req, res, next) => {
+exports.read_tags = async (req, res, next) => {
 
   const session = driver.session()
 
@@ -58,7 +58,7 @@ exports.get_tag_list = async (req, res, next) => {
         SIZE(COLLECT(article)) as article_count
       `
     
-    const {records} = session.run(query)
+    const {records} = await session.run(query)
 
     const tags = records.map(r => ({ ...r.get('tag'), article_count: r.get('article_count') }))
     res.send(tags)
@@ -72,7 +72,7 @@ exports.get_tag_list = async (req, res, next) => {
 
 }
 
-exports.get_tag = async (req, res, next) => {
+exports.read_tag = async (req, res, next) => {
   // Route to get a single tag using its ID
 
   const session = driver.session()

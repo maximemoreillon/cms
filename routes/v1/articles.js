@@ -3,8 +3,8 @@ const dotenv = require('dotenv')
 const {Router} = require('express')
 const {
   create_article,
-  get_article_list,
-  get_article,
+  read_articles,
+  read_article,
   update_article,
   delete_article
 } = require('../../controllers/v1/articles.js')
@@ -27,10 +27,10 @@ const auth_options_lax = { ...auth_options_strict, lax: true }
 
 router.route('/')
   .post(auth(auth_options_strict), create_article)
-  .get(auth(auth_options_lax), get_article_list)
+  .get(auth(auth_options_lax), read_articles)
 
 router.route('/:article_id')
-  .get(auth(auth_options_lax), get_article)
+  .get(auth(auth_options_lax), read_article)
   .put(auth(auth_options_strict), update_article)
   .patch(auth(auth_options_strict), update_article)
   .delete(auth(auth_options_strict), delete_article)

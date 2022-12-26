@@ -87,8 +87,7 @@ exports.create_article = async (req, res, next) => {
 }
 
 
-exports.get_article_list = async (req, res, next) => {
-  // Route to get multiple articles
+exports.read_articles = async (req, res, next) => {
 
   const session = driver.session()
 
@@ -214,7 +213,7 @@ exports.get_article_list = async (req, res, next) => {
 }
 
 
-exports.get_article = async (req, res, next) => {
+exports.read_article = async (req, res, next) => {
 
   const session = driver.session()
 

@@ -2,53 +2,46 @@ const {driver} = require('../../db.js')
 const { get_current_user_id } = require('../../utils.js')
 const createHttpError = require('http-errors')
 
-function get_author_id(req) {
-  return req.query.author_id
-    ?? req.params.author_id
-}
-
-const get_article_id = (req) => {
-  return req.query.id
-    ?? req.query.article_id
-    ?? req.params.article_id
-}
+const get_author_id = ({query, params}) => query.author_id ?? params.author_id
 
 
-exports.get_author = (req, res, next) => {
 
-  const author_id = get_author_id(req)
+exports.get_author = async (req, res, next) => {
 
-  // Route to get an author using his ID
   const session = driver.session()
+  try {
+    const author_id = get_author_id(req)
 
-  const query = `
-    MATCH (author:User)
-    WHERE author._id = $author_id
-    RETURN properties(author) as author
-    `
+    const query = `
+      MATCH (author:User)
+      WHERE author._id = $author_id
+      RETURN properties(author) as author`
 
-  session.run(query, { author_id })
-  .then( ({records}) => {
+    const {records} = await session.run(query, { author_id })
 
     if(!records.length) throw createHttpError(404,`Author ${author_id} not found`)
     const author = records[0].get('author')
     delete author.password_hashed
     res.send(author)
 
-   })
-  .catch(next)
-  .finally( () => { session.close() })
+  } catch (error) {
+    next(error)
+  } finally {
+    session.close()
+  }
+
 }
 
-exports.get_article_author = (req, res, next) => {
+exports.get_article_author = async (req, res, next) => {
   // Route to get author of a given article
 
   // Is this even used?
 
+  const session = driver.session()
+  try {
+
   const {article_id} = req.params
   const current_user_id = get_current_user_id(res)
-
-  const session = driver.session()
 
   const query = `
     MATCH (author:User)<-[:WRITTEN_BY]-(article:Article)
@@ -58,24 +51,24 @@ exports.get_article_author = (req, res, next) => {
     WHERE article.published = true
     ${res.locals.user ? 'OR author._id = $current_user_id' : ''}
 
-    RETURN properties(author) as author
-    `
+    RETURN properties(author) as author`
 
   const params = {
     current_user_id,
     article_id
   }
 
-  session.run(query,params)
-  .then( ({records}) => {
+  const {records} = await session.run(query,params)
 
-    if(!records.length ) throw createHttpError(404, `Article ${article_id} not found`)
+  if(!records.length ) throw createHttpError(404, `Article ${article_id} not found`)
     const author = records[0].get('author')
     delete author.password_hashed
     res.send(author)
 
-   })
-   .catch(next)
-   .finally(() => { session.close() })
+  } catch (error) {
+    next(error)
+  } finally {
+    session.close()
+  }
 
 }

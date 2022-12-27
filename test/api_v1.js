@@ -138,7 +138,16 @@ describe("/v1/", () => {
 
       const {status, body} = await request(app)
         .get(`/v1/articles/${article_id}/author`)
-        .set('Authorization', `Bearer ${jwt}`)
+
+      expect(status).to.equal(200)
+    })
+  })
+
+  describe("GET /v1/authors", () => {
+    it("Should allow the query of all authors", async () => {
+
+      const {status, body} = await request(app)
+        .get(`/v1/authors`)
 
       expect(status).to.equal(200)
     })

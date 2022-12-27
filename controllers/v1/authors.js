@@ -4,9 +4,38 @@ const createHttpError = require('http-errors')
 
 const get_author_id = ({query, params}) => query.author_id ?? params.author_id
 
+exports.read_authors = async (req, res, next) => {
+
+  const session = driver.session()
+  try {
+    const author_id = get_author_id(req)
+
+    // TODO: Get article count
+    // TODO: Pagination
+    const query = `
+      MATCH (author:User {_id: $author_id})
+      RETURN properties(author) as author`
+
+    const {records} = await session.run(query, { author_id })
+
+    const authors = records.map( r => {
+      const author = r.get('author')
+      delete author.password_hashed
+      return author
+    })
+    
+    res.send(authors)
+
+  } catch (error) {
+    next(error)
+  } finally {
+    session.close()
+  }
+
+}
 
 
-exports.get_author = async (req, res, next) => {
+exports.read_author = async (req, res, next) => {
 
   const session = driver.session()
   try {
@@ -14,7 +43,7 @@ exports.get_author = async (req, res, next) => {
 
     const query = `
       MATCH (author:User)
-      WHERE author._id = $author_id
+      WHERE (author)<-[:WRITTEN_BY]-(:Article)
       RETURN properties(author) as author`
 
     const {records} = await session.run(query, { author_id })
@@ -31,6 +60,8 @@ exports.get_author = async (req, res, next) => {
   }
 
 }
+
+
 
 exports.get_article_author = async (req, res, next) => {
   // Route to get author of a given article

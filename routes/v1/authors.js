@@ -1,17 +1,16 @@
 const { Router } = require('express')
 
 const {
-  get_author
+  read_authors,
+  read_author,
 } = require('../../controllers/v1/authors.js')
 
 const router = Router()
 
-
-
 router.route('/')
-  //.get(get_authors)
+  .get(read_authors)
 
 router.route('/:author_id')
-  .get(get_author)
+  .get(read_author)
 
 module.exports = router

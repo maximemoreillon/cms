@@ -38,8 +38,9 @@ router.route('/:article_id')
 // router.route('/:article_id/tags')
 //   .get(auth(auth_options_strict), tag_controller.get_article_tags)
 
+// Not sure if this is used anywhere
 router.route('/:article_id/author')
-  .get(auth(auth_options_strict), get_article_author)
+  .get(auth(auth_options_lax), get_article_author)
 
 // router.route('/:article_id/comments')
 //   .get(auth(auth_options_strict), comment_controller.get_article_comments)

@@ -35,14 +35,4 @@ router.route('/:article_id')
   .patch(auth(auth_options_strict), update_article)
   .delete(auth(auth_options_strict), delete_article)
 
-// router.route('/:article_id/tags')
-//   .get(auth(auth_options_strict), tag_controller.get_article_tags)
-
-// Not sure if this is used anywhere
-router.route('/:article_id/author')
-  .get(auth(auth_options_lax), get_article_author)
-
-// router.route('/:article_id/comments')
-//   .get(auth(auth_options_strict), comment_controller.get_article_comments)
-
 module.exports = router

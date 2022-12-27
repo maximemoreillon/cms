@@ -8,7 +8,6 @@ exports.read_authors = async (req, res, next) => {
 
   const session = driver.session()
   try {
-    const author_id = get_author_id(req)
 
     // TODO: Get article count
     // TODO: Pagination
@@ -16,7 +15,7 @@ exports.read_authors = async (req, res, next) => {
       MATCH (author:User {_id: $author_id})
       RETURN properties(author) as author`
 
-    const {records} = await session.run(query, { author_id })
+    const {records} = await session.run(query)
 
     const authors = records.map( r => {
       const author = r.get('author')

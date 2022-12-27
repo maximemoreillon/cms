@@ -136,7 +136,7 @@ describe("/v1/", () => {
   describe("GET /v1/articles/:article_id/author", () => {
     it("Should allow the query of the author of an article", async () => {
 
-      const {status, body} = await request(app)
+      const {status} = await request(app)
         .get(`/v1/articles/${article_id}/author`)
 
       expect(status).to.equal(200)

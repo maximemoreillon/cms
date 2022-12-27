@@ -9,10 +9,11 @@ exports.read_authors = async (req, res, next) => {
   const session = driver.session()
   try {
 
-    // TODO: Get article count
+    // TODO: Get article count for each author
     // TODO: Pagination
     const query = `
-      MATCH (author:User {_id: $author_id})
+      MATCH (author:User)
+      WHERE (author)<-[:WRITTEN_BY]-(:Article)
       RETURN properties(author) as author`
 
     const {records} = await session.run(query)
@@ -41,8 +42,7 @@ exports.read_author = async (req, res, next) => {
     const author_id = get_author_id(req)
 
     const query = `
-      MATCH (author:User)
-      WHERE (author)<-[:WRITTEN_BY]-(:Article)
+      MATCH (author:User {_id: $author_id})
       RETURN properties(author) as author`
 
     const {records} = await session.run(query, { author_id })

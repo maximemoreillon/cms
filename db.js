@@ -34,6 +34,7 @@ const init = async () => {
     // await session.run(index_query)
     // console.log(`[Neo4J] Index set on _id`)
     connected = true
+    console.log(`[Neo4J] Connection established`)
   }
   catch (e) {
     console.log(e)

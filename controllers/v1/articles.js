@@ -14,19 +14,15 @@ exports.create_article = async (req, res, next) => {
     const current_user_id = get_current_user_id(res)
     if (!current_user_id) throw createHttpError(403, `This action is restricted to authenticated users`)
 
-    // destructure to handle article node and tag nodes separatel;y
+    // destructure to handle article node and tag nodes separatel;
+    // TODO: Extract tags if provided
     const {
       tag_ids = [],
-      ...articleProperties
-    } = req.body
-
-    const {
       title = 'Untitled article',
       published = false,
       summary,
       content
-    } = articleProperties
-
+    } = req.body
 
     const query = `
       // create the article node
@@ -303,12 +299,12 @@ exports.update_article = async (req, res, next) => {
     const article_id = get_article_id(req)
     if(!article_id) throw createHttpError(400, `Missing article ID`)
 
+    // TODO: extract tags if provided
     const {
       tag_ids = [],
       ...article
     } = req.body
 
-    // why destructure article?
     const {
       title,
       published,

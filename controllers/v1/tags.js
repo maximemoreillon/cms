@@ -45,6 +45,7 @@ exports.read_tags = async (req, res, next) => {
 
     const pinned_query = pinned ? `WHERE tag.navigation_item = true` : ``
 
+    // TODO: Pagination
     const query = `
       MATCH (tag:Tag)
       ${pinned_query}

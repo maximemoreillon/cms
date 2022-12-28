@@ -1,5 +1,4 @@
 const {driver} = require('../../db.js')
-const { get_current_user_id } = require('../../utils.js')
 const createHttpError = require('http-errors')
 
 const get_author_id = ({query, params}) => query.author_id ?? params.author_id
@@ -9,12 +8,13 @@ exports.read_authors = async (req, res, next) => {
   const session = driver.session()
   try {
 
-    // TODO: Get article count for each author
     // TODO: Pagination
     const query = `
       MATCH (author:User)
-      WHERE (author)<-[:WRITTEN_BY]-(:Article)
-      RETURN properties(author) as author`
+      WHERE (author)<-[:WRITTEN_BY]-(article:Article)
+      RETURN 
+        PROPERTIES(author) as author,
+        SIZE(COLLECT(article)) as article_count`
 
     const {records} = await session.run(query)
 

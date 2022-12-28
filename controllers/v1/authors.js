@@ -11,7 +11,8 @@ exports.read_authors = async (req, res, next) => {
     // TODO: Pagination
     const query = `
       MATCH (author:User)
-      WHERE (author)<-[:WRITTEN_BY]-(article:Article)
+      WITH author
+      MATCH (author)<-[:WRITTEN_BY]-(article:Article)
       RETURN 
         PROPERTIES(author) as author,
         SIZE(COLLECT(article)) as article_count`

@@ -12,6 +12,8 @@ const {
 
 dotenv.config()
 
+console.log(`CMS v${version}`)
+
 db_init()
 
 const {
@@ -51,6 +53,6 @@ app.use((error, req, res, next) => {
   res.status(statusCode).send(message)
 })
 
-app.listen(APP_PORT, () => console.log(`CMS listening on port ${APP_PORT}`))
+app.listen(APP_PORT, () => console.log(`[Express] listening on port ${APP_PORT}`))
 
 exports.app = app

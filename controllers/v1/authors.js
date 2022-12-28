@@ -21,8 +21,9 @@ exports.read_authors = async (req, res, next) => {
 
     const authors = records.map( r => {
       const author = r.get('author')
+      const article_count = r.get('article_count')
       delete author.password_hashed
-      return author
+      return { ...author, article_count }
     })
     
     res.send(authors)

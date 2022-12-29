@@ -1,27 +1,26 @@
-const createHttpError = require('http-errors')
-const {driver} = require('../../db.js')
-const {get_current_user_id} = require('../../utils.js')
+const createHttpError = require("http-errors")
+const { driver } = require("../../db.js")
+const { get_current_user_id } = require("../../utils.js")
 
-const get_article_id = ({query, params}) => query.id ?? query.article_id ?? params.article_id
-
+const get_article_id = ({ query, params }) =>
+  query.id ?? query.article_id ?? params.article_id
 
 exports.create_article = async (req, res, next) => {
   // Route to create an article
 
   const session = driver.session()
   try {
-
     const current_user_id = get_current_user_id(res)
-    if (!current_user_id) throw createHttpError(403, `This action is restricted to authenticated users`)
+    if (!current_user_id) throw createHttpError(403, `Unauthorized`)
 
     // destructure to handle article node and tag nodes separatel;
     // TODO: Extract tags if provided
     const {
       tag_ids = [],
-      title = 'Untitled article',
+      title = "Untitled article",
       published = false,
       summary,
-      content
+      content,
     } = req.body
 
     const query = `
@@ -69,12 +68,11 @@ exports.create_article = async (req, res, next) => {
       tag_ids,
     }
 
-  
-    const {records} = await session.run(query, params)
-    const article = records[0].get('article')
-      if (!article) throw createHttpError(500, `Article could not be created`)
-      console.log(`Article ${article._id} created`)
-      res.send(article)
+    const { records } = await session.run(query, params)
+    const article = records[0].get("article")
+    if (!article) throw createHttpError(500, `Article could not be created`)
+    console.log(`Article ${article._id} created`)
+    res.send(article)
   } catch (error) {
     next(error)
   } finally {
@@ -82,44 +80,41 @@ exports.create_article = async (req, res, next) => {
   }
 }
 
-
 exports.read_articles = async (req, res, next) => {
-
   const session = driver.session()
 
   try {
-
     const current_user = res.locals.user
     const current_user_id = get_current_user_id(res)
 
     const {
       author_id,
       tag_id,
+      tag, // Alias for tag_id
       search,
       sort,
-      order = 'DESC',
+      order = "DESC",
       start_index = 0,
       batch_size = 10,
     } = req.query
 
-
     const sorting = () => {
-
-
-      let sorting = 'authorship.creation_date'
-      const sorting_lookup = { date: 'authorship.creation_date', title: 'article.title', views: 'article.views' }
+      let sorting = "authorship.creation_date"
+      const sorting_lookup = {
+        date: "authorship.creation_date",
+        title: "article.title",
+        views: "article.views",
+      }
 
       if (sort && sorting_lookup[sort]) sorting = sorting_lookup[sort]
 
       return sorting
     }
 
-
     const batching = () => {
       return `WITH article_count,
           article_collection[toInteger(${start_index})..toInteger(${start_index})+toInteger(${batch_size})] AS articles`
     }
-
 
     const query = `
         // Get all articles and teir author
@@ -131,15 +126,25 @@ exports.read_articles = async (req, res, next) => {
 
         // Using search bar to find matching titles
         WITH article
-        ${search ? `WHERE toLower(article.title) CONTAINS toLower($search)` : ``}
+        ${
+          search ? `WHERE toLower(article.title) CONTAINS toLower($search)` : ``
+        }
 
         // Filter by tag if provided
         WITH article
-        ${tag_id ? 'MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE tag._id = $tag_id' : ''}
+        ${
+          tag || tag_id
+            ? "MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE tag._id = $tag_id"
+            : ""
+        }
 
         // Filter by user if provided
         WITH article
-        ${author_id ? 'MATCH (author:User)<-[WRITTEN_BY]-(article) WHERE author._id = $author_id' : ''}
+        ${
+          author_id
+            ? "MATCH (author:User)<-[WRITTEN_BY]-(article) WHERE author._id = $author_id"
+            : ""
+        }
 
         // Get tags
         WITH article
@@ -152,7 +157,7 @@ exports.read_articles = async (req, res, next) => {
         // Sorting and ordering
         // Can sort by views, date or title (alphabetically)
         WITH article, authorship, author, tags
-        ORDER BY ${sorting()} ${order === 'ASC' ? 'ASC' : 'DESC'}
+        ORDER BY ${sorting()} ${order === "ASC" ? "ASC" : "DESC"}
 
 
 
@@ -172,11 +177,10 @@ exports.read_articles = async (req, res, next) => {
         RETURN article_count, articles
         `
 
-
     const params = {
       current_user_id,
       author_id,
-      tag_id,
+      tag_id: tag_id || tag,
       search,
       sort,
       order,
@@ -187,39 +191,40 @@ exports.read_articles = async (req, res, next) => {
     const { records } = await session.run(query, params)
 
     const output = {
-        article_count: records[0].get('article_count'),
-        articles: records[0].get('articles').map(a => ({
-          ...a.article,
-          author: a.author,
-          authorship: a.authorship,
-          tags: a.tags,
-        })),
-      }
-    
-    output.articles.forEach((article) => { delete article.author.password_hashed })
+      article_count: records[0].get("article_count"),
+      articles: records[0].get("articles").map((a) => ({
+        ...a.article,
+        author: a.author,
+        authorship: a.authorship,
+        tags: a.tags,
+      })),
+    }
+
+    output.articles.forEach((article) => {
+      delete article.author.password_hashed
+    })
 
     res.send(output)
-
   } catch (error) {
     next(error)
   } finally {
     session.close()
   }
-
 }
 
-
 exports.read_article = async (req, res, next) => {
-
   const session = driver.session()
 
   try {
-
     const article_id = get_article_id(req)
     const current_user_id = get_current_user_id(res)
 
     // Increment view count only if not author
-    const viewCountIncrementQuery = `SET article.views = COALESCE(article.views, 0) + ${current_user_id ? 'TOINTEGER(author._id <> TOSTRING($current_user_id))' : '1' }`
+    const viewCountIncrementQuery = `SET article.views = COALESCE(article.views, 0) + ${
+      current_user_id
+        ? "TOINTEGER(author._id <> TOSTRING($current_user_id))"
+        : "1"
+    }`
 
     const query = `
       // Match article by ID
@@ -230,7 +235,7 @@ exports.read_article = async (req, res, next) => {
       WITH article
       MATCH (article)-[authorship:WRITTEN_BY]->(author:User)
       WHERE article.published = true
-        ${current_user_id ? 'OR author._id = $current_user_id' : ''}
+        ${current_user_id ? "OR author._id = $current_user_id" : ""}
 
       // Update view count
       ${viewCountIncrementQuery}
@@ -250,27 +255,20 @@ exports.read_article = async (req, res, next) => {
 
     const params = { current_user_id, article_id }
 
-
-  
-    const { records } = await session.run(query,params)
-    if (!records.length) throw createHttpError(404, `Article ${article_id} not found`)
+    const { records } = await session.run(query, params)
+    if (!records.length)
+      throw createHttpError(404, `Article ${article_id} not found`)
 
     const record = records[0]
 
-    // remove password_hashed
-    const article = record.get('article')
-    const author = record.get('author')
+    const article = record.get("article")
+    const author = record.get("author")
     delete author.password_hashed
 
-    // Respond with tags, author as part of the article or separately?
-    // GET Article to respond {article,author,tags} or {_id,content,...,author,tags}?
-
-    // This is more natural for the client
-    // But makes it a pain for updates
     const response = {
       ...article,
-      authorship: record.get('authorship'),
-      tags: record.get('tags'),
+      authorship: record.get("authorship"),
+      tags: record.get("tags"),
       author,
     }
 
@@ -281,12 +279,7 @@ exports.read_article = async (req, res, next) => {
   } finally {
     session.close()
   }
-  
-
 }
-
-
-
 
 exports.update_article = async (req, res, next) => {
   // Route to update an article
@@ -294,26 +287,25 @@ exports.update_article = async (req, res, next) => {
 
   try {
     const current_user_id = get_current_user_id(res)
-    if(!current_user_id) throw createHttpError(403, `This action is restricted to authenticated users`)
+    if (!current_user_id)
+      throw createHttpError(
+        403,
+        `This action is restricted to authenticated users`
+      )
 
     const article_id = get_article_id(req)
-    if(!article_id) throw createHttpError(400, `Missing article ID`)
+    if (!article_id) throw createHttpError(400, `Missing article ID`)
 
     // TODO: extract tags if provided
+    // TODO: Could use ...rest if body is validated with joy
     const {
       tag_ids = [],
-      ...article
-    } = req.body
-
-    const {
       title,
       published,
       summary,
       content,
-      thumbnail_src
-    } = article
-
-
+      thumbnail_src,
+    } = req.body
 
     const query = `
       // Find the article node and update it
@@ -358,7 +350,6 @@ exports.update_article = async (req, res, next) => {
       RETURN properties(article) AS article
       `
 
-    // why restructure article?
     const params = {
       article_id,
       article: { title, published, summary, content, thumbnail_src },
@@ -368,34 +359,27 @@ exports.update_article = async (req, res, next) => {
 
     const { records } = await session.run(query, params)
 
-    if(!records.length ) throw createHttpError(404, `Article ${article_id} not found`)
+    if (!records.length)
+      throw createHttpError(404, `Article ${article_id} not found`)
 
     console.log(`Article ${article_id} updated`)
-    res.send(records[0].get('article'))
-
+    res.send(records[0].get("article"))
   } catch (error) {
     next(error)
   } finally {
     session.close()
   }
-
-
-
 }
 
 exports.delete_article = async (req, res, next) => {
-
   const session = driver.session()
 
   try {
     const current_user_id = get_current_user_id(res)
-    if(!current_user_id) throw createHttpError(403, `This action is restricted to authenticated users`)
-
+    if (!current_user_id) throw createHttpError(403, `Unauthorized`)
 
     const article_id = req.params.article_id
-    if(!article_id) throw createHttpError(400, `Missing article ID`)
-
-
+    if (!article_id) throw createHttpError(400, `Missing article ID`)
 
     const query = `
       MATCH (article:Article)-[:WRITTEN_BY]->(author:User)
@@ -417,18 +401,14 @@ exports.delete_article = async (req, res, next) => {
       article_id,
     }
 
-    const { records } = await session.run(query,params)
+    const { records } = await session.run(query, params)
 
-    if(!records.length) throw createHttpError(500,`Article deletion failed`)
+    if (!records.length) throw createHttpError(500, `Article deletion failed`)
     console.log(`Article ${article_id} deleted`)
-    res.send({article_id})
-
+    res.send({ article_id })
   } catch (error) {
     next(error)
   } finally {
     session.close()
   }
-
-  
 }
-

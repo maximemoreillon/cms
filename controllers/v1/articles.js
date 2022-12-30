@@ -272,7 +272,6 @@ exports.read_article = async (req, res, next) => {
       author,
     }
 
-    console.log(`Article ${article_id} queried`)
     res.send(response)
   } catch (error) {
     next(error)
@@ -287,11 +286,7 @@ exports.update_article = async (req, res, next) => {
 
   try {
     const current_user_id = get_current_user_id(res)
-    if (!current_user_id)
-      throw createHttpError(
-        403,
-        `This action is restricted to authenticated users`
-      )
+    if (!current_user_id) throw createHttpError(403, `Unauthorized`)
 
     const article_id = get_article_id(req)
     if (!article_id) throw createHttpError(400, `Missing article ID`)
@@ -319,7 +314,6 @@ exports.update_article = async (req, res, next) => {
       REMOVE article.title
 
       // Set the new properties
-      // Might be better with a +=
       SET article += $article
 
       // Update the edition date

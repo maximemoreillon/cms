@@ -90,7 +90,6 @@ exports.read_articles = async (req, res, next) => {
     const {
       author_id,
       tag_id,
-      tag, // Alias for tag_id
       search,
       sort,
       order = "DESC",
@@ -133,7 +132,7 @@ exports.read_articles = async (req, res, next) => {
         // Filter by tag if provided
         WITH article
         ${
-          tag || tag_id
+          tag_id
             ? "MATCH (tag:Tag)-[:APPLIED_TO]->(article) WHERE tag._id = $tag_id"
             : ""
         }
@@ -180,7 +179,7 @@ exports.read_articles = async (req, res, next) => {
     const params = {
       current_user_id,
       author_id,
-      tag_id: tag_id || tag,
+      tag_id,
       search,
       sort,
       order,

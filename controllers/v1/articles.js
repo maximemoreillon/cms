@@ -19,7 +19,7 @@ exports.create_article = async (req, res, next) => {
     const { tag_ids = [], ...articleProperties } = req.body
 
     const valid = validateArticle(articleProperties)
-    if (!valid) throw createHttpError(`Article schema not respected`)
+    if (!valid) throw createHttpError(400, validateArticle.errors[0].message)
 
     const query = `
       // create the article node
@@ -292,7 +292,7 @@ exports.update_article = async (req, res, next) => {
     const { tag_ids = [], ...articleProperties } = req.body
 
     const valid = validateArticle(articleProperties)
-    if (!valid) throw createHttpError(`Article schema not respected`)
+    if (!valid) throw createHttpError(400, validateArticle.errors[0].message)
 
     const query = `
       // Find the article node and update it

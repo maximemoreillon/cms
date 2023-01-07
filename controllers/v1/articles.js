@@ -1,6 +1,7 @@
 const createHttpError = require("http-errors")
 const { driver } = require("../../db.js")
 const { get_current_user_id } = require("../../utils.js")
+const validateArticle = require("../../schemas/article")
 
 const get_article_id = ({ query, params }) =>
   query.id ?? query.article_id ?? params.article_id
@@ -13,15 +14,12 @@ exports.create_article = async (req, res, next) => {
     const current_user_id = get_current_user_id(res)
     if (!current_user_id) throw createHttpError(403, `Unauthorized`)
 
-    // destructure to handle article node and tag nodes separatel;
+    // destructure to handle article node and tag nodes separately;
     // TODO: Extract tags if provided
-    const {
-      tag_ids = [],
-      title = "Untitled article",
-      published = false,
-      summary,
-      content,
-    } = req.body
+    const { tag_ids = [], ...articleProperties } = req.body
+
+    const valid = validateArticle(articleProperties)
+    if (!valid) throw createHttpError(`Article schema not respected`)
 
     const query = `
       // create the article node
@@ -64,7 +62,7 @@ exports.create_article = async (req, res, next) => {
 
     const params = {
       author_id: current_user_id,
-      article: { title, published, summary, content },
+      article: articleProperties,
       tag_ids,
     }
 
@@ -214,8 +212,8 @@ exports.read_articles = async (req, res, next) => {
 exports.read_article = async (req, res, next) => {
   const session = driver.session()
 
+  const { article_id } = req.params
   try {
-    const article_id = get_article_id(req)
     const current_user_id = get_current_user_id(res)
 
     // Increment view count only if not author
@@ -291,15 +289,10 @@ exports.update_article = async (req, res, next) => {
     if (!article_id) throw createHttpError(400, `Missing article ID`)
 
     // TODO: extract tags if provided
-    // TODO: Could use ...rest if body is validated with joy
-    const {
-      tag_ids = [],
-      title,
-      published,
-      summary,
-      content,
-      thumbnail_src,
-    } = req.body
+    const { tag_ids = [], ...articleProperties } = req.body
+
+    const valid = validateArticle(articleProperties)
+    if (!valid) throw createHttpError(`Article schema not respected`)
 
     const query = `
       // Find the article node and update it
@@ -345,7 +338,7 @@ exports.update_article = async (req, res, next) => {
 
     const params = {
       article_id,
-      article: { title, published, summary, content, thumbnail_src },
+      article: articleProperties,
       author_id: current_user_id,
       tag_ids,
     }

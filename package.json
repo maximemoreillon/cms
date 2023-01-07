@@ -13,6 +13,7 @@
   "license": "MIT",
   "dependencies": {
     "@moreillon/express_identification_middleware": "^1.1.0",
+    "ajv": "^8.12.0",
     "axios": "^0.26.1",
     "cookies": "^0.8.0",
     "cors": "^2.8.5",

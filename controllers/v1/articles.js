@@ -295,8 +295,11 @@ exports.update_article = async (req, res, next) => {
       authorship,
       author,
       _id,
+      views,
       ...articleProperties
     } = req.body
+
+    console.log(articleProperties)
 
     const valid = validateArticle(articleProperties)
     if (!valid) throw createHttpError(400, validateArticle.errors[0].message)

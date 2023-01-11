@@ -289,7 +289,8 @@ exports.update_article = async (req, res, next) => {
     if (!article_id) throw createHttpError(400, `Missing article ID`)
 
     // TODO: extract tags if provided
-    const { tag_ids = [], ...articleProperties } = req.body
+    const { tag_ids = [], published, thumbnail_src, title, content } = req.body
+    const articleProperties = { published, thumbnail_src, title, content }
 
     const valid = validateArticle(articleProperties)
     if (!valid) throw createHttpError(400, validateArticle.errors[0].message)

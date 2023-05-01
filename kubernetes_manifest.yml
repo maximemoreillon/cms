@@ -13,13 +13,13 @@ spec:
         app: ${APPLICATION_NAME}
     spec:
       containers:
-      - name: ${APPLICATION_NAME}
-        image: ${CONTAINER_IMAGE_TAGGED}
-        ports:
-        - containerPort: 80
-        envFrom:
-        - secretRef:
-           name: environment-variables
+        - name: ${APPLICATION_NAME}
+          image: ${CONTAINER_IMAGE_TAGGED}
+          ports:
+            - containerPort: 80
+          envFrom:
+            - secretRef:
+                name: environment-variables
 ---
 apiVersion: v1
 kind: Service
@@ -30,40 +30,38 @@ spec:
   selector:
     app: ${APPLICATION_NAME}
   ports:
-  - port: 80
+    - port: 80
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ${APPLICATION_NAME}
   annotations:
-    kubernetes.io/ingress.class: "nginx"
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    cert-manager.io/cluster-issuer: letsencrypt
 spec:
   tls:
-  - hosts:
-    - api.cms.maximemoreillon.com
-    - api.articles.maximemoreillon.com
-    secretName: ${APPLICATION_NAME} # Name of the secret, i.e. the certificates
+    - hosts:
+        - api.cms.maximemoreillon.com
+        - api.articles.maximemoreillon.com
+      secretName: ${APPLICATION_NAME}-tls
   rules:
-  - host: api.cms.maximemoreillon.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: ${APPLICATION_NAME}
-            port:
-              number: 80
-  - host: api.articles.maximemoreillon.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: ${APPLICATION_NAME}
-            port:
-              number: 80
-
+    - host: api.cms.maximemoreillon.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ${APPLICATION_NAME}
+                port:
+                  number: 80
+    - host: api.articles.maximemoreillon.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ${APPLICATION_NAME}
+                port:
+                  number: 80

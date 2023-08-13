@@ -1,11 +1,16 @@
-const { driver } = require("../../db.js")
-const createHttpError = require("http-errors")
-const { current_user_is_admin } = require("../../utils.js")
+import { driver } from "../../db"
+import createHttpError from "http-errors"
+import { current_user_is_admin } from "../../utils"
+import { Request, Response, NextFunction } from "express"
 
-const get_tag_id = ({ query, params }) =>
+const get_tag_id = ({ query, params }: any) =>
   params.tag_id || query.tad_id || query.id
 
-exports.create_tag = async (req, res, next) => {
+export const create_tag = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const session = driver.session()
 
   try {
@@ -31,7 +36,11 @@ exports.create_tag = async (req, res, next) => {
   }
 }
 
-exports.read_tags = async (req, res, next) => {
+export const read_tags = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const session = driver.session()
 
   try {
@@ -65,7 +74,11 @@ exports.read_tags = async (req, res, next) => {
   }
 }
 
-exports.read_tag = async (req, res, next) => {
+export const read_tag = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const session = driver.session()
 
   try {
@@ -88,7 +101,11 @@ exports.read_tag = async (req, res, next) => {
   }
 }
 
-exports.update_tag = async (req, res, next) => {
+export const update_tag = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const session = driver.session()
 
   try {
@@ -120,7 +137,11 @@ exports.update_tag = async (req, res, next) => {
   }
 }
 
-exports.delete_tag = async (req, res, next) => {
+export const delete_tag = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const session = driver.session()
 
   try {

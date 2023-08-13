@@ -1,10 +1,15 @@
 // COMMENTS ARE NOT USED FOR THE TIME BEING!
 
-const createHttpError = require('http-errors')
-const {driver} = require('../../db.js')
-const { get_current_user_id } = require('../../utils.js')
+import createHttpError from "http-errors"
+import { driver } from "../../db"
+import { get_current_user_id } from "../../utils"
+import { Request, Response, NextFunction } from "express"
 
-exports.create_comment = async (req, res, next) => {
+export const create_comment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   // Route to create a comment
   // TODO: Prevent commenting on unpublished articles
   const session = driver.session()
@@ -29,25 +34,26 @@ exports.create_comment = async (req, res, next) => {
       comment: req.body.comment,
     }
 
-    const {records} = await session.run(query, params)
+    const { records } = await session.run(query, params)
 
     console.log(`Comment created`)
-    res.send(result.records)
-    
+    res.send(records)
   } catch (error) {
     next(error)
   } finally {
     session.close()
   }
-
 }
 
-exports.delete_comment = async (req, res, next) => {
+export const delete_comment = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   // Route to delete a comment
   const session = driver.session()
 
   try {
-
     const query = `
     // Find the comment
     MATCH (comment:Comment)
@@ -69,20 +75,26 @@ exports.delete_comment = async (req, res, next) => {
       comment_id: req.body.comment_id,
     }
 
-    const { records} = await session.run(query, params)
+    const { records } = await session.run(query, params)
 
-    if (!records.length) throw createHttpError(400, `Comment could not be deleted, probably due to insufficient permissions`)
+    if (!records.length)
+      throw createHttpError(
+        400,
+        `Comment could not be deleted, probably due to insufficient permissions`
+      )
     res.send("Comment deleted successfully")
-    
   } catch (error) {
     next(error)
   } finally {
     session.close()
   }
-
 }
 
-exports.get_article_comments = async (req, res, next) => {
+export const get_article_comments = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   // Route to get comments of a given article
 
   const session = driver.session()
@@ -95,24 +107,24 @@ exports.get_article_comments = async (req, res, next) => {
 
       WITH comment, article
       MATCH (article)-[:WRITTEN_BY]->(author:User)
-      WHERE article.published = true  ${res.locals.user ? 'OR author._id = $current_user_id' : ''}
+      WHERE article.published = true  ${
+        res.locals.user ? "OR author._id = $current_user_id" : ""
+      }
 
       RETURN comment
       `
-    
-      const params = {
-        current_user_id: get_current_user_id(res),
-        article_id: article_id,
-      }
 
-      const { record } = await session.run(query, params)
+    const params = {
+      current_user_id: get_current_user_id(res),
+      article_id: article_id,
+    }
 
-      res.send(record)
+    const { record }: any = await session.run(query, params)
 
+    res.send(record)
   } catch (error) {
     next(error)
   } finally {
     session.close()
   }
-
 }

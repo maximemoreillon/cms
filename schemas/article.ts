@@ -1,4 +1,4 @@
-const Ajv = require("ajv")
+import Ajv from "ajv"
 const ajv = new Ajv() // options can be passed, e.g. {allErrors: true}
 
 const schema = {
@@ -15,4 +15,4 @@ const schema = {
 
 const validate = ajv.compile(schema)
 
-module.exports = validate
+export default validate

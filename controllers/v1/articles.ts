@@ -1,12 +1,17 @@
-const createHttpError = require("http-errors")
-const { driver } = require("../../db.js")
-const { get_current_user_id } = require("../../utils.js")
-const validateArticle = require("../../schemas/article")
+import createHttpError from "http-errors"
+import { driver } from "../../db"
+import { get_current_user_id } from "../../utils"
+import validateArticle from "../../schemas/article"
+import { Request, Response, NextFunction } from "express"
 
-const get_article_id = ({ query, params }) =>
+const get_article_id = ({ query, params }: any) =>
   query.id ?? query.article_id ?? params.article_id
 
-exports.create_article = async (req, res, next) => {
+export const create_article = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   // Route to create an article
 
   const session = driver.session()
@@ -19,6 +24,7 @@ exports.create_article = async (req, res, next) => {
     const { tag_ids = [], ...articleProperties } = req.body
 
     const valid = validateArticle(articleProperties)
+    // @ts-ignore
     if (!valid) throw createHttpError(400, validateArticle.errors[0].message)
 
     const query = `
@@ -78,7 +84,11 @@ exports.create_article = async (req, res, next) => {
   }
 }
 
-exports.read_articles = async (req, res, next) => {
+export const read_articles = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const session = driver.session()
 
   try {
@@ -103,6 +113,7 @@ exports.read_articles = async (req, res, next) => {
         views: "article.views",
       }
 
+      // @ts-ignore
       if (sort && sorting_lookup[sort]) sorting = sorting_lookup[sort]
 
       return sorting
@@ -189,7 +200,7 @@ exports.read_articles = async (req, res, next) => {
 
     const output = {
       article_count: records[0].get("article_count"),
-      articles: records[0].get("articles").map((a) => ({
+      articles: records[0].get("articles").map((a: any) => ({
         ...a.article,
         author: a.author,
         authorship: a.authorship,
@@ -197,7 +208,7 @@ exports.read_articles = async (req, res, next) => {
       })),
     }
 
-    output.articles.forEach((article) => {
+    output.articles.forEach((article: any) => {
       delete article.author.password_hashed
     })
 
@@ -209,7 +220,11 @@ exports.read_articles = async (req, res, next) => {
   }
 }
 
-exports.read_article = async (req, res, next) => {
+export const read_article = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const session = driver.session()
 
   const { article_id } = req.params
@@ -277,7 +292,11 @@ exports.read_article = async (req, res, next) => {
   }
 }
 
-exports.update_article = async (req, res, next) => {
+export const update_article = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   // Route to update an article
   const session = driver.session()
 
@@ -302,6 +321,7 @@ exports.update_article = async (req, res, next) => {
     console.log(articleProperties)
 
     const valid = validateArticle(articleProperties)
+    // @ts-ignore
     if (!valid) throw createHttpError(400, validateArticle.errors[0].message)
 
     const query = `
@@ -367,7 +387,11 @@ exports.update_article = async (req, res, next) => {
   }
 }
 
-exports.delete_article = async (req, res, next) => {
+export const delete_article = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const session = driver.session()
 
   try {

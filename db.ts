@@ -20,7 +20,7 @@ export const init = async () => {
   const id_setting_query = `
   MATCH (n)
   WHERE ((n:Article) or (n:Tag))
-    AND n._id IS NOT NULL
+    AND n._id IS NULL
   SET n._id = toString(id(n))
   RETURN COUNT(n) as count
   `

@@ -1,6 +1,5 @@
 import express from "express"
 import cors from "cors"
-import apiMetrics from "prometheus-api-metrics"
 import dotenv from "dotenv"
 import { version, author } from "./package.json"
 import {
@@ -10,6 +9,7 @@ import {
 } from "./db"
 import { Request, Response, NextFunction } from "express"
 import routerV1 from "./routes/v1"
+import promBundle from "express-prom-bundle"
 
 dotenv.config()
 
@@ -18,11 +18,12 @@ console.log(`CMS v${version}`)
 db_init()
 
 const { APP_PORT = 80, IDENTIFICATION_URL } = process.env
+const promOptions = { includeMethod: true, includePath: true }
 
 const app = express()
 app.use(express.json({ limit: "50mb" }))
 app.use(cors())
-app.use(apiMetrics())
+app.use(promBundle(promOptions))
 
 app.get("/", (req, res) => {
   res.send({

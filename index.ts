@@ -1,6 +1,7 @@
+import dotenv from "dotenv"
+dotenv.config()
 import express from "express"
 import cors from "cors"
-import dotenv from "dotenv"
 import { version, author } from "./package.json"
 import {
   url as neo4j_url,
@@ -10,8 +11,6 @@ import {
 import { Request, Response, NextFunction } from "express"
 import routerV1 from "./routes/v1"
 import promBundle from "express-prom-bundle"
-
-dotenv.config()
 
 console.log(`CMS v${version}`)
 

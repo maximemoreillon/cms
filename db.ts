@@ -1,7 +1,4 @@
 import neo4j from "neo4j-driver"
-import dotenv from "dotenv"
-
-dotenv.config()
 
 const {
   NEO4J_URL = "bolt://neo4j:7687",

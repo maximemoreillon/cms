@@ -18,6 +18,8 @@ services:
 
 build:
   stage: build
+  only:
+    - master
   tags:
     - dind
   before_script:
@@ -33,6 +35,8 @@ test:
   tags:
     - dind
   coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  only:
+    - master
   before_script:
     # Docker hub login
     - >

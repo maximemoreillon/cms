@@ -215,12 +215,16 @@ export const read_articles = async (
 
     const output = {
       article_count: records[0].get("article_count"),
-      articles: records[0].get("articles").map((a: any) => ({
-        ...a.article,
-        author: a.author,
-        authorship: a.authorship,
-        tags: a.tags,
-      })),
+      articles: records[0].get("articles").map((a: any) => {
+        const { content, ...articleProperties } = a.article
+
+        return {
+          ...articleProperties,
+          author: a.author,
+          authorship: a.authorship,
+          tags: a.tags,
+        }
+      }),
     }
 
     output.articles.forEach((article: any) => {

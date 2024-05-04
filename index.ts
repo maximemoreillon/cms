@@ -8,6 +8,7 @@ import {
   get_connected as neo4j_connected,
   init as db_init,
 } from "./db"
+import { init as cache_init } from "./cache"
 import { Request, Response, NextFunction } from "express"
 import routerV1 from "./routes/v1"
 import promBundle from "express-prom-bundle"
@@ -15,6 +16,7 @@ import promBundle from "express-prom-bundle"
 console.log(`CMS v${version}`)
 
 db_init()
+cache_init()
 
 const { APP_PORT = 80, IDENTIFICATION_URL } = process.env
 const promOptions = { includeMethod: true, includePath: true }

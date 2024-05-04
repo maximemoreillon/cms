@@ -2,6 +2,7 @@ import { driver } from "../../db"
 import createHttpError from "http-errors"
 import { current_user_is_admin } from "../../utils"
 import { Request, Response, NextFunction } from "express"
+import { removeArticlesFromCache } from "../../cache"
 
 const get_tag_id = ({ query, params }: any) =>
   params.tag_id || query.tad_id || query.id
@@ -28,6 +29,7 @@ export const create_tag = async (
     if (!records.length) throw createHttpError(500, `Tag creation failed`)
     console.log(`Tag ${name} created`)
     const tag = records[0].get("tag")
+    removeArticlesFromCache()
     res.send(tag)
   } catch (error) {
     next(error)
@@ -161,7 +163,8 @@ export const delete_tag = async (
 
     if (!records.length) throw createHttpError(500, `Tag deletion failed`)
     console.log(`Tag "${tag_id}" deleted`)
-    res.send("Tag deleted successfully")
+    removeArticlesFromCache()
+    res.send({ tag_id })
   } catch (error) {
     next(error)
   } finally {

@@ -3,9 +3,14 @@ import { driver } from "../../db"
 import { get_current_user_id } from "../../utils"
 import validateArticle from "../../schemas/article"
 import { Request, Response, NextFunction } from "express"
-
-const get_article_id = ({ query, params }: any) =>
-  query.id ?? query.article_id ?? params.article_id
+import {
+  getArticleFromCache,
+  getArticlesFromCache,
+  removeArticleFromCache,
+  removeArticlesFromCache,
+  setArticleInCache,
+  setArticlesInCache,
+} from "../../cache"
 
 export const create_article = async (
   req: Request,
@@ -76,6 +81,8 @@ export const create_article = async (
     const article = records[0].get("article")
     if (!article) throw createHttpError(500, `Article could not be created`)
     console.log(`Article ${article._id} created`)
+    removeArticlesFromCache()
+
     res.send(article)
   } catch (error) {
     next(error)
@@ -89,22 +96,30 @@ export const read_articles = async (
   res: Response,
   next: NextFunction
 ) => {
+  const current_user = res.locals.user
+  const current_user_id = get_current_user_id(res)
+
+  const {
+    author_id,
+    tag_id,
+    search,
+    sort,
+    order = "DESC",
+    start_index = "0",
+    batch_size = "10",
+  } = req.query
+
+  const cacheKey = `articles:${JSON.stringify({
+    ...req.query,
+    user_id: current_user_id,
+  })}`
+
+  const articlesFromCache = await getArticlesFromCache(cacheKey)
+  if (articlesFromCache) return res.send(articlesFromCache)
+
   const session = driver.session()
 
   try {
-    const current_user = res.locals.user
-    const current_user_id = get_current_user_id(res)
-
-    const {
-      author_id,
-      tag_id,
-      search,
-      sort,
-      order = "DESC",
-      start_index = 0,
-      batch_size = 10,
-    } = req.query
-
     const sorting = () => {
       let sorting = "authorship.creation_date"
       const sorting_lookup = {
@@ -200,21 +215,43 @@ export const read_articles = async (
 
     const output = {
       article_count: records[0].get("article_count"),
-      articles: records[0].get("articles").map((a: any) => ({
-        ...a.article,
-        author: a.author,
-        authorship: a.authorship,
-        tags: a.tags,
-      })),
+      articles: records[0].get("articles").map((a: any) => {
+        const { content, ...articleProperties } = a.article
+
+        return {
+          ...articleProperties,
+          author: a.author,
+          authorship: a.authorship,
+          tags: a.tags,
+        }
+      }),
     }
 
     output.articles.forEach((article: any) => {
       delete article.author.password_hashed
     })
 
+    setArticlesInCache(cacheKey, output)
+
     res.send(output)
   } catch (error) {
     next(error)
+  } finally {
+    session.close()
+  }
+}
+
+const incrementViewCount = async (articleId: string) => {
+  const query = `
+  MATCH (article:Article {_id: $articleId})
+  SET article.views = COALESCE(article.views, 0) + 1
+  `
+  const params = { articleId }
+  const session = driver.session()
+  try {
+    session.run(query, params)
+  } catch (error) {
+    console.error(error)
   } finally {
     session.close()
   }
@@ -225,71 +262,63 @@ export const read_article = async (
   res: Response,
   next: NextFunction
 ) => {
-  const session = driver.session()
-
   const { article_id } = req.params
-  try {
-    const current_user_id = get_current_user_id(res)
+  const current_user_id = get_current_user_id(res)
 
-    // Increment view count only if not author
-    const viewCountIncrementQuery = `SET article.views = COALESCE(article.views, 0) + ${
-      current_user_id
-        ? "TOINTEGER(author._id <> TOSTRING($current_user_id))"
-        : "1"
-    }`
+  let article = await getArticleFromCache(article_id)
 
-    const query = `
-      // Match article by ID
-      MATCH (article:Article)
-      WHERE article._id = $article_id
+  if (!article) {
+    const session = driver.session()
+    try {
+      const query = `
+        // Match article by ID
+        MATCH (article:Article {_id: $article_id})-[authorship:WRITTEN_BY]->(author:User)
+  
+        // Get the tags of the article
+        // OPTIONAL MATCH because some articles might not have a tag
+        WITH article, author, authorship
+        OPTIONAL MATCH (tag:Tag)-[:APPLIED_TO]->(article)
+  
+        // Tags is an array
+        RETURN
+          properties(article) as article,
+          properties(author) as author,
+          properties(authorship) as authorship,
+          collect(properties(tag)) as tags
+        `
 
-      // Show only published articles or articles written by current user
-      WITH article
-      MATCH (article)-[authorship:WRITTEN_BY]->(author:User)
-      WHERE article.published = true
-        ${current_user_id ? "OR author._id = $current_user_id" : ""}
+      const params = { current_user_id, article_id }
 
-      // Update view count
-      ${viewCountIncrementQuery}
+      const { records } = await session.run(query, params)
+      if (!records.length)
+        throw createHttpError(404, `Article ${article_id} not found`)
 
-      // Get the tags of the article
-      // OPTIONAL MATCH because some articles might not have a tag
-      WITH article, author, authorship
-      OPTIONAL MATCH (tag:Tag)-[:APPLIED_TO]->(article)
+      const record = records[0]
+      const author = record.get("author")
+      delete author.password_hashed
 
-      // Tags is an array
-      RETURN
-        properties(article) as article,
-        properties(author) as author,
-        properties(authorship) as authorship,
-        collect(properties(tag)) as tags
-      `
+      article = {
+        ...record.get("article"),
+        author,
+        authorship: record.get("authorship"),
+        tags: record.get("tags"),
+        cached: false,
+      }
 
-    const params = { current_user_id, article_id }
-
-    const { records } = await session.run(query, params)
-    if (!records.length)
-      throw createHttpError(404, `Article ${article_id} not found`)
-
-    const record = records[0]
-
-    const article = record.get("article")
-    const author = record.get("author")
-    delete author.password_hashed
-
-    const response = {
-      ...article,
-      authorship: record.get("authorship"),
-      tags: record.get("tags"),
-      author,
+      setArticleInCache(article)
+    } catch (error) {
+      next(error)
+    } finally {
+      session.close()
     }
-
-    res.send(response)
-  } catch (error) {
-    next(error)
-  } finally {
-    session.close()
   }
+
+  if (!article) return res.status(404).send("Article not found")
+  if (!article.published && article.author._id !== current_user_id)
+    return res.status(401).send("Fobirdden")
+
+  incrementViewCount(article_id)
+  res.send(article)
 }
 
 export const update_article = async (
@@ -297,15 +326,12 @@ export const update_article = async (
   res: Response,
   next: NextFunction
 ) => {
-  // Route to update an article
   const session = driver.session()
 
   try {
+    const { article_id } = req.params
     const current_user_id = get_current_user_id(res)
     if (!current_user_id) throw createHttpError(403, `Unauthorized`)
-
-    const article_id = get_article_id(req)
-    if (!article_id) throw createHttpError(400, `Missing article ID`)
 
     // TODO: extract tags if provided
     const {
@@ -379,6 +405,10 @@ export const update_article = async (
       throw createHttpError(404, `Article ${article_id} not found`)
 
     console.log(`Article ${article_id} updated`)
+
+    removeArticlesFromCache()
+    removeArticleFromCache(article_id)
+
     res.send(records[0].get("article"))
   } catch (error) {
     next(error)
@@ -425,6 +455,10 @@ export const delete_article = async (
 
     if (!records.length) throw createHttpError(500, `Article deletion failed`)
     console.log(`Article ${article_id} deleted`)
+
+    removeArticlesFromCache()
+    removeArticleFromCache(article_id)
+
     res.send({ article_id })
   } catch (error) {
     next(error)

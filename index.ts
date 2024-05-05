@@ -8,7 +8,7 @@ import {
   get_connected as neo4j_connected,
   init as db_init,
 } from "./db"
-import { init as cache_init } from "./cache"
+import { init as cache_init, REDIS_URL } from "./cache"
 import { Request, Response, NextFunction } from "express"
 import routerV1 from "./routes/v1"
 import promBundle from "express-prom-bundle"
@@ -34,6 +34,9 @@ app.get("/", (req, res) => {
     neo4j: {
       url: neo4j_url,
       connected: neo4j_connected(),
+    },
+    cache: {
+      url: REDIS_URL,
     },
     auth: {
       identification_url: IDENTIFICATION_URL,

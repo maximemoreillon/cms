@@ -344,8 +344,6 @@ export const update_article = async (
       ...articleProperties
     } = req.body
 
-    console.log(articleProperties)
-
     const valid = validateArticle(articleProperties)
     // @ts-ignore
     if (!valid) throw createHttpError(400, validateArticle.errors[0].message)

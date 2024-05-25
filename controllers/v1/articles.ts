@@ -245,11 +245,12 @@ const incrementViewCount = async (articleId: string) => {
   const query = `
   MATCH (article:Article {_id: $articleId})
   SET article.views = COALESCE(article.views, 0) + 1
+  RETURN article.views as views
   `
   const params = { articleId }
   const session = driver.session()
   try {
-    session.run(query, params)
+    await session.run(query, params)
   } catch (error) {
     console.error(error)
   } finally {
